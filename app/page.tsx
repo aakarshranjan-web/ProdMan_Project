@@ -5,6 +5,7 @@ import AddInvoiceSheet from "@/components/AddInvoiceSheet";
 import BankCreditSheet from "@/components/BankCreditSheet";
 import ConnectBankSheet from "@/components/ConnectBankSheet";
 import Dashboard from "@/components/Dashboard";
+import DeleteInvoiceSheet from "@/components/DeleteInvoiceSheet";
 import EscalateSheet from "@/components/EscalateSheet";
 import InvoiceDetailSheet from "@/components/InvoiceDetailSheet";
 import InvoiceList from "@/components/InvoiceList";
@@ -49,6 +50,8 @@ export default function Home() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [reminderId, setReminderId] = useState<string | null>(null);
   const [escalateId, setEscalateId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [highlightIds, setHighlightIds] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -147,6 +150,34 @@ export default function Home() {
   }, []);
   const closeEscalate = useCallback(() => setEscalateId(null), []);
 
+  // Only the invoice's own fields change; reminders, escalation and payment stay as they were.
+  const updateInvoice = (id: string, fields: Omit<Invoice, "id">) => {
+    setInvoices((list) =>
+      list.map((i) =>
+        i.id === id
+          ? {
+              ...i,
+              buyerName: fields.buyerName,
+              invoiceNumber: fields.invoiceNumber,
+              amount: fields.amount,
+              invoiceDate: fields.invoiceDate,
+              termsDays: fields.termsDays,
+            }
+          : i,
+      ),
+    );
+    setEditId(null);
+    setToast(`Invoice ${fields.invoiceNumber} updated`);
+    flash(id);
+  };
+
+  const deleteInvoice = (id: string) => {
+    const inv = invoices.find((i) => i.id === id);
+    setInvoices((list) => list.filter((i) => i.id !== id));
+    setDeleteId(null);
+    if (inv) setToast(`Invoice ${inv.invoiceNumber} deleted`);
+  };
+
   const logIn = (businessName: string) => {
     const next = { businessName };
     saveSession(next);
@@ -189,6 +220,8 @@ export default function Home() {
   const detail = invoices.find((i) => i.id === detailId);
   const reminderInv = invoices.find((i) => i.id === reminderId);
   const escalateInv = invoices.find((i) => i.id === escalateId);
+  const editInv = invoices.find((i) => i.id === editId);
+  const deleteInv = invoices.find((i) => i.id === deleteId);
 
   if (session === undefined) return <div className="min-h-dvh bg-ink" />;
   if (session === null) return <LoginScreen onLogin={logIn} />;
@@ -284,6 +317,8 @@ export default function Home() {
               onMarkPaid={openCredit}
               onSendReminder={openReminder}
               onEscalate={openEscalate}
+              onEdit={setEditId}
+              onDelete={setDeleteId}
             />
           ) : (
             <Dashboard invoices={invoices} today={today} />
@@ -325,6 +360,22 @@ export default function Home() {
           onClose={closeReminder}
           onSend={(message, channels) => sendReminder(reminderInv.id, message, channels)}
         />
+      )}
+
+      {editInv && today && (
+        <AddInvoiceSheet
+          key={editInv.id}
+          open
+          editing={editInv}
+          today={today}
+          invoices={invoices}
+          onClose={() => setEditId(null)}
+          onAdd={(fields) => updateInvoice(editInv.id, fields)}
+        />
+      )}
+
+      {deleteInv && (
+        <DeleteInvoiceSheet invoice={deleteInv} onCancel={() => setDeleteId(null)} onConfirm={() => deleteInvoice(deleteInv.id)} />
       )}
 
       {escalateInv && today && (

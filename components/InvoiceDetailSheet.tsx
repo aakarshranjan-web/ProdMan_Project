@@ -80,7 +80,7 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
         )}
       </div>
 
-      {canEscalate(info) && inv.escalation && (
+      {inv.escalation && (
         <div className="mt-6">
           <EscalatedBadge invoice={inv} full />
         </div>

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import StatusBadge from "./StatusBadge";
 import { EscalatedBadge } from "./EscalateSheet";
 import { paidLabel } from "./InvoiceDetailSheet";
+import RowMenu from "./RowMenu";
 import { canEscalate, formatDate, formatINR, getStatus, type Invoice, type StatusInfo } from "@/lib/invoices";
 
 type SortKey = "status" | "due" | "amount";
@@ -64,9 +65,11 @@ interface Props {
   onMarkPaid: (id?: string) => void;
   onSendReminder: (id: string) => void;
   onEscalate: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
-export default function InvoiceList({ invoices, today, highlightIds, onOpen, onMarkPaid, onSendReminder, onEscalate }: Props) {
+export default function InvoiceList({ invoices, today, highlightIds, onOpen, onMarkPaid, onSendReminder, onEscalate, onEdit, onDelete }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("status");
   const [reversed, setReversed] = useState(false);
 
@@ -142,7 +145,12 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                 <p className="truncate font-bold">{inv.buyerName}</p>
                 <p className="mt-0.5 font-mono text-xs text-ink-soft">{inv.invoiceNumber}</p>
               </div>
-              <p className="tnum shrink-0 text-lg font-extrabold">{formatINR(inv.amount)}</p>
+              <div className="-mr-2 flex shrink-0 items-start gap-1">
+                <p className="tnum text-lg font-extrabold">{formatINR(inv.amount)}</p>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <RowMenu label={inv.invoiceNumber} onEdit={() => onEdit(inv.id)} onDelete={() => onDelete(inv.id)} />
+                </div>
+              </div>
             </div>
             <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-sm">
               <div className="flex items-center gap-2">
@@ -180,7 +188,7 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                 </button>
               </div>
             )}
-            {canEscalate(info) && (
+            {(inv.escalation || canEscalate(info)) && (
               <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                 {inv.escalation ? (
                   <EscalatedBadge invoice={inv} />
@@ -204,13 +212,13 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
           <table className="w-full text-left text-sm">
             <thead className="border-b border-line bg-paper/50 text-xs font-bold uppercase tracking-wider text-ink-soft">
               <tr>
-                <th className="px-4 py-3.5">Buyer</th>
-                <th className="px-4 py-3.5">Invoice no.</th>
-                <th className="px-4 py-3.5 text-right">Amount</th>
-                <th className="px-4 py-3.5">Due date</th>
-                <th className="px-4 py-3.5">Status</th>
-                <th className="whitespace-nowrap px-4 py-3.5">Days overdue</th>
-                <th className="px-4 py-3.5">
+                <th className="px-3 py-3.5">Buyer</th>
+                <th className="px-3 py-3.5">Invoice no.</th>
+                <th className="px-3 py-3.5 text-right">Amount</th>
+                <th className="px-3 py-3.5">Due date</th>
+                <th className="px-3 py-3.5">Status</th>
+                <th className="whitespace-nowrap px-3 py-3.5">Days overdue</th>
+                <th className="px-3 py-3.5">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
@@ -222,16 +230,16 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                   onClick={() => onOpen(inv.id)}
                   className={`cursor-pointer transition hover:bg-paper/40 ${highlightIds.includes(inv.id) ? "flash" : ""}`}
                 >
-                  <td className="min-w-[10rem] px-4 py-4 font-bold">{inv.buyerName}</td>
-                  <td className="whitespace-nowrap px-4 py-4 font-mono text-xs text-ink-soft">{inv.invoiceNumber}</td>
-                  <td className="tnum px-4 py-4 text-right text-base font-extrabold">{formatINR(inv.amount)}</td>
-                  <td className="px-4 py-4">
+                  <td className="min-w-[10rem] px-3 py-4 font-bold">{inv.buyerName}</td>
+                  <td className="whitespace-nowrap px-3 py-4 font-mono text-xs text-ink-soft">{inv.invoiceNumber}</td>
+                  <td className="tnum px-3 py-4 text-right text-base font-extrabold">{formatINR(inv.amount)}</td>
+                  <td className="px-3 py-4">
                     <div className="tnum whitespace-nowrap">{formatDate(info.dueDate)}</div>
                     <div className="text-xs text-ink-soft">
                       {info.status === "due-soon" ? dueHint(info) : `${inv.termsDays}-day terms`}
                     </div>
                   </td>
-                  <td className="min-w-[12rem] px-4 py-4">
+                  <td className="min-w-[11rem] px-3 py-4">
                     <StatusBadge status={info.status} />
                     {info.status === "paid" && inv.paidOn && (
                       <div className={`mt-1 text-xs leading-snug ${inv.paidVia === "bank" ? "font-semibold text-brand" : "text-ink-soft"}`}>
@@ -240,45 +248,50 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-4">
                     <Overdue info={info} />
                     {info.status !== "paid" && reminderCount(inv) && (
                       <div className="mt-1 whitespace-nowrap text-xs text-ink-soft">{reminderCount(inv)}</div>
                     )}
                   </td>
-                  <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                    {info.status !== "paid" && (
-                      <div className="flex justify-end gap-1.5">
-                        {info.status === "overdue" && (
-                          <button
-                            onClick={() => onSendReminder(inv.id)}
-                            className="whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-dark"
-                          >
-                            Send Reminder
-                          </button>
+                  <td className="px-3 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-start justify-end gap-1">
+                      <div>
+                        {info.status !== "paid" && (
+                          <div className="flex justify-end gap-1.5">
+                            {info.status === "overdue" && (
+                              <button
+                                onClick={() => onSendReminder(inv.id)}
+                                className="whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-dark"
+                              >
+                                Send Reminder
+                              </button>
+                            )}
+                            <button
+                              onClick={() => onMarkPaid(inv.id)}
+                              className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold text-brand hover:bg-brand/10"
+                            >
+                              Mark paid
+                            </button>
+                          </div>
                         )}
-                        <button
-                          onClick={() => onMarkPaid(inv.id)}
-                          className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold text-brand hover:bg-brand/10"
-                        >
-                          Mark paid
-                        </button>
-                      </div>
-                    )}
-                    {canEscalate(info) && (
-                      <div className="mt-1.5 flex justify-end">
-                        {inv.escalation ? (
-                          <EscalatedBadge invoice={inv} />
-                        ) : (
-                          <button
-                            onClick={() => onEscalate(inv.id)}
-                            className="whitespace-nowrap rounded-lg border border-[#4b3aa8]/30 px-3 py-1.5 text-xs font-bold text-[#4b3aa8] hover:bg-[#ece9fb]"
-                          >
-                            Escalate to CA
-                          </button>
+                        {(inv.escalation || canEscalate(info)) && (
+                          <div className="mt-1.5 flex justify-end">
+                            {inv.escalation ? (
+                              <EscalatedBadge invoice={inv} />
+                            ) : (
+                              <button
+                                onClick={() => onEscalate(inv.id)}
+                                className="whitespace-nowrap rounded-lg border border-[#4b3aa8]/30 px-3 py-1.5 text-xs font-bold text-[#4b3aa8] hover:bg-[#ece9fb]"
+                              >
+                                Escalate to CA
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
+                      <RowMenu label={inv.invoiceNumber} onEdit={() => onEdit(inv.id)} onDelete={() => onDelete(inv.id)} />
+                    </div>
                   </td>
                 </tr>
               ))}
