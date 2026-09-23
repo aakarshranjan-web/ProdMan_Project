@@ -48,10 +48,11 @@ export default function Dashboard({ invoices, today }: { invoices: Invoice[]; to
   const trend = rateTrend(today, rate.pct);
   const inflows = expectedInflows(invoices, today);
   const projected = inflows.total - SCHEDULED_OUTFLOWS;
+  const escalated = invoices.filter((i) => i.escalation).length;
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Card label="Total outstanding" value={formatINR(s.outstanding)} note="All unpaid invoices" />
         <Card label="Total overdue" value={formatINR(s.overdue)} note="Past the MSMED deadline" tone={s.overdue ? "over" : undefined} />
         <Card label="Overdue invoices" value={String(s.overdueCount)} note={s.overdueCount === 1 ? "invoice needs chasing" : "invoices need chasing"} />
@@ -64,6 +65,10 @@ export default function Dashboard({ invoices, today }: { invoices: Invoice[]; to
               : "Paid within 7 days of first reminder"
           }
         />
+        <div className="col-span-2 flex items-center justify-between gap-3 rounded-3xl border border-line bg-card p-4 sm:p-5 lg:col-span-1 lg:flex-col lg:items-start lg:justify-start">
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">Invoices escalated to CA</p>
+          <p className="tnum text-2xl font-extrabold tracking-tight sm:text-[28px]">{escalated}</p>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">

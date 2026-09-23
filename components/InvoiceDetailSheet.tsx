@@ -2,7 +2,8 @@
 
 import Sheet from "./Sheet";
 import StatusBadge from "./StatusBadge";
-import { formatDate, formatINR, getStatus, type Invoice } from "@/lib/invoices";
+import { EscalatedBadge } from "./EscalateSheet";
+import { canEscalate, formatDate, formatINR, getStatus, type Invoice } from "@/lib/invoices";
 import { channelLabel, paymentLink } from "@/lib/business";
 
 interface Props {
@@ -11,13 +12,14 @@ interface Props {
   onClose: () => void;
   onSendReminder: () => void;
   onMarkPaid: () => void;
+  onEscalate: () => void;
 }
 
 export function paidLabel(inv: Invoice) {
   return inv.paidVia === "bank" ? "Auto-matched from bank statement" : "Marked paid manually";
 }
 
-export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSendReminder, onMarkPaid }: Props) {
+export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSendReminder, onMarkPaid, onEscalate }: Props) {
   const info = getStatus(inv, today);
   const reminders = [...(inv.reminders ?? [])].reverse();
 
@@ -30,6 +32,8 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
   if (info.status === "overdue") rows.push(["Days overdue", <span key="o" className="font-bold text-over">{info.daysOverdue}</span>]);
   if (inv.paidOn) rows.push(["Paid on", formatDate(inv.paidOn)]);
   if (inv.paymentRef) rows.push(["Payment ref", <span key="r" className="font-mono text-xs">{inv.paymentRef}</span>]);
+  if (inv.escalation)
+    rows.push(["CA escalation", `${inv.escalation.caName}, ${formatDate(inv.escalation.date)} ${inv.escalation.time}`]);
   if (!inv.paidOn) rows.push(["Payment link", <span key="l" className="font-mono text-xs">{paymentLink(inv)}</span>]);
 
   return (
@@ -76,6 +80,12 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
         )}
       </div>
 
+      {canEscalate(info) && inv.escalation && (
+        <div className="mt-6">
+          <EscalatedBadge invoice={inv} full />
+        </div>
+      )}
+
       {info.status !== "paid" && (
         <div className="mt-6 grid gap-2 sm:grid-cols-2">
           {info.status === "overdue" && (
@@ -89,6 +99,14 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
           >
             Mark as paid
           </button>
+          {canEscalate(info) && !inv.escalation && (
+            <button
+              onClick={onEscalate}
+              className="rounded-xl border border-[#4b3aa8]/30 py-3 text-sm font-bold text-[#4b3aa8] hover:bg-[#ece9fb] sm:col-span-2"
+            >
+              Escalate to CA
+            </button>
+          )}
         </div>
       )}
     </Sheet>

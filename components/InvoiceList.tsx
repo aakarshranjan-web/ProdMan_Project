@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import StatusBadge from "./StatusBadge";
+import { EscalatedBadge } from "./EscalateSheet";
 import { paidLabel } from "./InvoiceDetailSheet";
-import { formatDate, formatINR, getStatus, type Invoice, type StatusInfo } from "@/lib/invoices";
+import { canEscalate, formatDate, formatINR, getStatus, type Invoice, type StatusInfo } from "@/lib/invoices";
 
 type SortKey = "status" | "due" | "amount";
 
@@ -62,9 +63,10 @@ interface Props {
   onOpen: (id: string) => void;
   onMarkPaid: (id?: string) => void;
   onSendReminder: (id: string) => void;
+  onEscalate: (id: string) => void;
 }
 
-export default function InvoiceList({ invoices, today, highlightIds, onOpen, onMarkPaid, onSendReminder }: Props) {
+export default function InvoiceList({ invoices, today, highlightIds, onOpen, onMarkPaid, onSendReminder, onEscalate }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("status");
   const [reversed, setReversed] = useState(false);
 
@@ -178,6 +180,20 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                 </button>
               </div>
             )}
+            {canEscalate(info) && (
+              <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                {inv.escalation ? (
+                  <EscalatedBadge invoice={inv} />
+                ) : (
+                  <button
+                    onClick={() => onEscalate(inv.id)}
+                    className="w-full rounded-xl border border-[#4b3aa8]/30 py-2.5 text-sm font-bold text-[#4b3aa8] hover:bg-[#ece9fb]"
+                  >
+                    Escalate to CA
+                  </button>
+                )}
+              </div>
+            )}
           </li>
         ))}
       </ul>
@@ -247,6 +263,20 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                         >
                           Mark paid
                         </button>
+                      </div>
+                    )}
+                    {canEscalate(info) && (
+                      <div className="mt-1.5 flex justify-end">
+                        {inv.escalation ? (
+                          <EscalatedBadge invoice={inv} />
+                        ) : (
+                          <button
+                            onClick={() => onEscalate(inv.id)}
+                            className="whitespace-nowrap rounded-lg border border-[#4b3aa8]/30 px-3 py-1.5 text-xs font-bold text-[#4b3aa8] hover:bg-[#ece9fb]"
+                          >
+                            Escalate to CA
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

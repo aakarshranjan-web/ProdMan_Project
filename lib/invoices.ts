@@ -24,6 +24,16 @@ export interface Invoice {
   /** How the payment was recorded */
   paidVia?: "manual" | "bank";
   reminders?: Reminder[];
+  /** Set once the owner has asked a CA partner to take this invoice to MSME Samadhaan */
+  escalation?: Escalation;
+}
+
+export interface Escalation {
+  caName: string;
+  /** Local calendar date, YYYY-MM-DD */
+  date: string;
+  /** Display time, e.g. "10:30 am" */
+  time: string;
 }
 
 export type InvoiceStatus = "paid" | "due-soon" | "overdue";
@@ -99,6 +109,13 @@ export function getStatus(inv: Invoice, today: string): StatusInfo {
   if (inv.paidOn) return { status: "paid", dueDate, daysOverdue: 0, daysLeft: 0 };
   if (diff > 0) return { status: "overdue", dueDate, daysOverdue: diff, daysLeft: 0 };
   return { status: "due-soon", dueDate, daysOverdue: 0, daysLeft: -diff };
+}
+
+/** Days overdue at which the owner can hand the invoice to a CA partner. */
+export const ESCALATION_THRESHOLD_DAYS = 45;
+
+export function canEscalate(info: StatusInfo) {
+  return info.status === "overdue" && info.daysOverdue >= ESCALATION_THRESHOLD_DAYS;
 }
 
 /* ---------- Smart matching of a bank credit to an invoice ---------- */

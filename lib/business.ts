@@ -3,6 +3,8 @@ import { formatINR, type Invoice } from "./invoices";
 /** The supplier using the app (the signed-in MSME in the real product). */
 export const BUSINESS_NAME = "Sharma Precision Tools";
 
+export const APP_NAME = "Invoice Tracker";
+
 const PAY_DOMAIN = "pay.invoicetracker.in";
 
 export function paymentLink(inv: Invoice) {

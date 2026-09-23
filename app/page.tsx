@@ -5,6 +5,7 @@ import AddInvoiceSheet from "@/components/AddInvoiceSheet";
 import BankCreditSheet from "@/components/BankCreditSheet";
 import ConnectBankSheet from "@/components/ConnectBankSheet";
 import Dashboard from "@/components/Dashboard";
+import EscalateSheet from "@/components/EscalateSheet";
 import InvoiceDetailSheet from "@/components/InvoiceDetailSheet";
 import InvoiceList from "@/components/InvoiceList";
 import ReminderSheet from "@/components/ReminderSheet";
@@ -38,6 +39,7 @@ export default function Home() {
   const [credit, setCredit] = useState<{ key: number; prefillId?: string } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [reminderId, setReminderId] = useState<string | null>(null);
+  const [escalateId, setEscalateId] = useState<string | null>(null);
 
   const [highlightIds, setHighlightIds] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -47,6 +49,17 @@ export default function Home() {
     setToday(t);
     setInvoices(seedInvoices(t));
   }, []);
+
+  // Keep "today" current while the app stays open, so statuses (and the 45-day
+  // escalation cut-off) roll over at midnight without a refresh.
+  useEffect(() => {
+    if (!today) return;
+    const id = setInterval(() => {
+      const t = todayISO();
+      setToday((prev) => (prev === t ? prev : t));
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [today]);
 
   useEffect(() => {
     if (!toast) return;
@@ -112,6 +125,18 @@ export default function Home() {
     flash(invoiceId);
   };
 
+  const requestCA = (invoiceId: string, caName: string) => {
+    setInvoices((list) =>
+      list.map((i) => (i.id === invoiceId ? { ...i, escalation: { caName, date: today!, time: nowTime() } } : i)),
+    );
+  };
+
+  const openEscalate = useCallback((id: string) => {
+    setDetailId(null);
+    setEscalateId(id);
+  }, []);
+  const closeEscalate = useCallback(() => setEscalateId(null), []);
+
   const openCredit = useCallback((prefillId?: string) => {
     setDetailId(null);
     setCredit({ key: Date.now(), prefillId });
@@ -128,6 +153,7 @@ export default function Home() {
 
   const detail = invoices.find((i) => i.id === detailId);
   const reminderInv = invoices.find((i) => i.id === reminderId);
+  const escalateInv = invoices.find((i) => i.id === escalateId);
 
   return (
     <div className="min-h-dvh">
@@ -200,6 +226,7 @@ export default function Home() {
               onOpen={setDetailId}
               onMarkPaid={openCredit}
               onSendReminder={openReminder}
+              onEscalate={openEscalate}
             />
           ) : (
             <Dashboard invoices={invoices} today={today} />
@@ -229,6 +256,7 @@ export default function Home() {
           onClose={closeDetail}
           onSendReminder={() => openReminder(detail.id)}
           onMarkPaid={() => openCredit(detail.id)}
+          onEscalate={() => openEscalate(detail.id)}
         />
       )}
 
@@ -238,6 +266,16 @@ export default function Home() {
           daysOverdue={getStatus(reminderInv, today).daysOverdue}
           onClose={closeReminder}
           onSend={(message, channels) => sendReminder(reminderInv.id, message, channels)}
+        />
+      )}
+
+      {escalateInv && today && (
+        <EscalateSheet
+          key={escalateInv.id}
+          invoice={escalateInv}
+          daysOverdue={getStatus(escalateInv, today).daysOverdue}
+          onClose={closeEscalate}
+          onRequest={(caName) => requestCA(escalateInv.id, caName)}
         />
       )}
 
