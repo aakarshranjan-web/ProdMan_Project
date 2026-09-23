@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Sheet from "./Sheet";
 import { formatINR, type Channel, type Invoice } from "@/lib/invoices";
-import { BUSINESS_NAME, paymentLink, reminderMessage } from "@/lib/business";
+import { paymentLink, reminderMessage } from "@/lib/business";
 
 interface Props {
   invoice: Invoice;
   daysOverdue: number;
+  businessName: string;
   onClose: () => void;
   onSend: (message: string, channels: Channel[]) => void;
 }
@@ -34,8 +35,8 @@ function Toggle({ on, onChange, label, detail }: { on: boolean; onChange: (v: bo
   );
 }
 
-export default function ReminderSheet({ invoice, daysOverdue, onClose, onSend }: Props) {
-  const draft = reminderMessage(invoice, daysOverdue);
+export default function ReminderSheet({ invoice, daysOverdue, businessName, onClose, onSend }: Props) {
+  const draft = reminderMessage(invoice, daysOverdue, businessName);
   const [message, setMessage] = useState(draft);
   const [whatsapp, setWhatsapp] = useState(true);
   const [email, setEmail] = useState(true);
@@ -70,7 +71,7 @@ export default function ReminderSheet({ invoice, daysOverdue, onClose, onSend }:
         rows={8}
         className="w-full resize-y rounded-xl border border-line bg-paper/60 px-3.5 py-3 text-[15px] leading-relaxed outline-none transition focus:border-brand focus:bg-card focus:ring-4 focus:ring-brand/10"
       />
-      <p className="mt-1.5 text-xs text-ink-soft">Signed as {BUSINESS_NAME}</p>
+      <p className="mt-1.5 text-xs text-ink-soft">Signed as {businessName}</p>
 
       <div className="mt-4">
         <span className="mb-1.5 block text-sm font-semibold">Payment link</span>

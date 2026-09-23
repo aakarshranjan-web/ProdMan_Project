@@ -8,8 +8,10 @@ import Dashboard from "@/components/Dashboard";
 import EscalateSheet from "@/components/EscalateSheet";
 import InvoiceDetailSheet from "@/components/InvoiceDetailSheet";
 import InvoiceList from "@/components/InvoiceList";
+import LoginScreen from "@/components/LoginScreen";
 import ReminderSheet from "@/components/ReminderSheet";
 import { channelLabel, nowTime } from "@/lib/business";
+import { clearSession, loadSession, saveSession, type Session } from "@/lib/session";
 import {
   formatDate,
   formatINR,
@@ -23,6 +25,11 @@ import {
 
 type Tab = "invoices" | "dashboard";
 
+function initials(name: string) {
+  const words = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
+  return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? "?").slice(0, 2)).toUpperCase();
+}
+
 function randomRef(prefix: string) {
   return `${prefix}${Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("")}`;
 }
@@ -31,6 +38,8 @@ export default function Home() {
   // "Today" comes from the viewer's device clock, so it's resolved after mount.
   const [today, setToday] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  // undefined until localStorage has been checked on the client.
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [tab, setTab] = useState<Tab>("invoices");
   const [bank, setBank] = useState<string | null>(null);
 
@@ -48,6 +57,7 @@ export default function Home() {
     const t = todayISO();
     setToday(t);
     setInvoices(seedInvoices(t));
+    setSession(loadSession());
   }, []);
 
   // Keep "today" current while the app stays open, so statuses (and the 45-day
@@ -137,6 +147,31 @@ export default function Home() {
   }, []);
   const closeEscalate = useCallback(() => setEscalateId(null), []);
 
+  const logIn = (businessName: string) => {
+    const next = { businessName };
+    saveSession(next);
+    setSession(next);
+  };
+
+  // Logging out wipes every demo action so the next login starts from the sample data.
+  const logOut = () => {
+    clearSession();
+    const t = todayISO();
+    setToday(t);
+    setInvoices(seedInvoices(t));
+    setTab("invoices");
+    setBank(null);
+    setAddOpen(false);
+    setConnectOpen(false);
+    setCredit(null);
+    setDetailId(null);
+    setReminderId(null);
+    setEscalateId(null);
+    setHighlightIds([]);
+    setToast(null);
+    setSession(null);
+  };
+
   const openCredit = useCallback((prefillId?: string) => {
     setDetailId(null);
     setCredit({ key: Date.now(), prefillId });
@@ -155,6 +190,9 @@ export default function Home() {
   const reminderInv = invoices.find((i) => i.id === reminderId);
   const escalateInv = invoices.find((i) => i.id === escalateId);
 
+  if (session === undefined) return <div className="min-h-dvh bg-ink" />;
+  if (session === null) return <LoginScreen onLogin={logIn} />;
+
   return (
     <div className="min-h-dvh">
       <header className="bg-ink text-white">
@@ -162,22 +200,41 @@ export default function Home() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-lg font-extrabold">₹</div>
-              <span className="text-sm font-semibold tracking-wide text-white/70">Invoice Tracker</span>
+              <span className="hidden text-sm font-semibold tracking-wide text-white/70 sm:inline">Invoice Tracker</span>
             </div>
-            {bank ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-paid/25 px-3 py-1.5 text-xs font-bold text-[#8fe0b6]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#5fd49a]" />
-                Bank connected ✓<span className="hidden font-semibold text-white/60 sm:inline">· {bank}</span>
-              </span>
-            ) : (
-              <button
-                onClick={() => setConnectOpen(true)}
-                className="rounded-full border border-white/25 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-white/10"
-              >
-                Connect bank account
-              </button>
-            )}
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              {bank ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-paid/25 px-3 py-1.5 text-xs font-bold text-[#8fe0b6]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#5fd49a]" />
+                  Bank connected ✓<span className="hidden font-semibold text-white/60 sm:inline">· {bank}</span>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setConnectOpen(true)}
+                  className="rounded-full border border-white/25 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-white/10"
+                >
+                  Connect bank<span className="hidden sm:inline"> account</span>
+                </button>
+              )}
+              <div className="flex min-w-0 items-center gap-2 border-l border-white/15 pl-2 sm:gap-3 sm:pl-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-extrabold">
+                    {initials(session.businessName)}
+                  </span>
+                  <span className="hidden max-w-[14rem] truncate text-sm font-semibold sm:inline" title={session.businessName}>
+                    {session.businessName}
+                  </span>
+                </div>
+                <button
+                  onClick={logOut}
+                  className="shrink-0 rounded-full px-2.5 py-1.5 text-xs font-bold text-white/70 transition hover:bg-white/10 hover:text-white"
+                >
+                  Log out
+                </button>
+              </div>
+            </div>
           </div>
+          <p className="mt-4 truncate text-sm font-semibold text-white/80 sm:hidden">{session.businessName}</p>
 
           <div className="mt-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -264,6 +321,7 @@ export default function Home() {
         <ReminderSheet
           invoice={reminderInv}
           daysOverdue={getStatus(reminderInv, today).daysOverdue}
+          businessName={session.businessName}
           onClose={closeReminder}
           onSend={(message, channels) => sendReminder(reminderInv.id, message, channels)}
         />
