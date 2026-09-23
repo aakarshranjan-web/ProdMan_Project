@@ -5,7 +5,7 @@ export interface Session {
 
 const KEY = "invoice-tracker.session";
 
-export const DEMO_BUSINESS = "Mehta Auto Components";
+export const DEMO_BUSINESS = "Bansal Auto Components";
 
 export function loadSession(): Session | null {
   try {
