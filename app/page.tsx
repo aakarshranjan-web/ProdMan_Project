@@ -41,7 +41,8 @@ export default function Home() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   // undefined until localStorage has been checked on the client.
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  const [tab, setTab] = useState<Tab>("invoices");
+  // The dashboard is the landing screen, including after a refresh while logged in.
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [bank, setBank] = useState<string | null>(null);
 
   const [addOpen, setAddOpen] = useState(false);
@@ -182,6 +183,7 @@ export default function Home() {
     const next = { businessName };
     saveSession(next);
     setSession(next);
+    setTab("dashboard");
   };
 
   // Logging out wipes every demo action so the next login starts from the sample data.
