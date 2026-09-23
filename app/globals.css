@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jbmono), ui-monospace, monospace;
+
+  --color-paper: #f5f3ee;
+  --color-card: #ffffff;
+  --color-ink: #0f1d2e;
+  --color-ink-soft: #52606f;
+  --color-line: #e4e0d6;
+  --color-brand: #0b6e5f;
+  --color-brand-dark: #07574b;
+
+  --color-paid: #0f7a4a;
+  --color-paid-bg: #e3f4ea;
+  --color-due: #8a5a00;
+  --color-due-bg: #fdf1cf;
+  --color-over: #b42318;
+  --color-over-bg: #fde6e3;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes flash {
+  0% { background-color: #d8f1e4; }
+  100% { background-color: transparent; }
+}
+.flash {
+  animation: flash 2.4s ease-out;
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.sheet-in {
+  animation: sheet-up 0.22s ease-out;
+}
