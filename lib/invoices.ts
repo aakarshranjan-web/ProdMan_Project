@@ -1,5 +1,16 @@
 export type PaymentTerms = 15 | 45;
 
+export type Channel = "whatsapp" | "email";
+
+export interface Reminder {
+  /** Local calendar date, YYYY-MM-DD */
+  date: string;
+  /** Display time, e.g. "10:30 am" */
+  time: string;
+  channels: Channel[];
+  message: string;
+}
+
 export interface Invoice {
   id: string;
   buyerName: string;
@@ -10,6 +21,9 @@ export interface Invoice {
   termsDays: PaymentTerms;
   paidOn?: string;
   paymentRef?: string;
+  /** How the payment was recorded */
+  paidVia?: "manual" | "bank";
+  reminders?: Reminder[];
 }
 
 export type InvoiceStatus = "paid" | "due-soon" | "overdue";
@@ -159,14 +173,22 @@ export function matchCredit(credit: BankCredit, invoices: Invoice[]): MatchResul
 
 export function seedInvoices(today: string): Invoice[] {
   const ago = (n: number) => addDays(today, -n);
+  const sent = (n: number, time = "10:30 am"): Reminder => ({
+    date: ago(n),
+    time,
+    channels: ["whatsapp", "email"],
+    message: "",
+  });
   return [
-    { id: "s1", buyerName: "Kaveri Textiles Pvt Ltd", invoiceNumber: "INV-2026-0398", amount: 72500, invoiceDate: ago(40), termsDays: 15 },
-    { id: "s2", buyerName: "Shree Balaji Auto Components", invoiceNumber: "INV-2026-0412", amount: 185000, invoiceDate: ago(58), termsDays: 45 },
+    { id: "s1", buyerName: "Kaveri Textiles Pvt Ltd", invoiceNumber: "INV-2026-0398", amount: 72500, invoiceDate: ago(40), termsDays: 15, reminders: [sent(12), sent(4, "4:15 pm")] },
+    { id: "s2", buyerName: "Shree Balaji Auto Components", invoiceNumber: "INV-2026-0412", amount: 185000, invoiceDate: ago(58), termsDays: 45, reminders: [sent(3, "11:05 am")] },
     { id: "s3", buyerName: "Ganesh Packaging Industries", invoiceNumber: "INV-2026-0421", amount: 320000, invoiceDate: ago(50), termsDays: 45 },
+    { id: "s9", buyerName: "Deccan Agro Exports", invoiceNumber: "INV-2026-0351", amount: 134000, invoiceDate: ago(68), termsDays: 15, reminders: [sent(40, "9:45 am"), sent(25), sent(10, "5:20 pm")] },
     { id: "s4", buyerName: "Annapurna Foods LLP", invoiceNumber: "INV-2026-0447", amount: 98000, invoiceDate: ago(14), termsDays: 15 },
     { id: "s5", buyerName: "Mehta Engineering Works", invoiceNumber: "INV-2026-0452", amount: 45000, invoiceDate: ago(9), termsDays: 15 },
     { id: "s6", buyerName: "Sai Krishna Pharma Distributors", invoiceNumber: "INV-2026-0439", amount: 240000, invoiceDate: ago(30), termsDays: 45 },
-    { id: "s7", buyerName: "Vardhman Steel Traders", invoiceNumber: "INV-2026-0376", amount: 156000, invoiceDate: ago(62), termsDays: 45, paidOn: ago(20), paymentRef: "NEFT/SBIN426055190312" },
-    { id: "s8", buyerName: "Lakshmi Electricals", invoiceNumber: "INV-2026-0405", amount: 64800, invoiceDate: ago(25), termsDays: 15, paidOn: ago(12), paymentRef: "UPI/426811034921" },
+    { id: "s7", buyerName: "Vardhman Steel Traders", invoiceNumber: "INV-2026-0376", amount: 156000, invoiceDate: ago(70), termsDays: 45, paidOn: ago(18), paymentRef: "NEFT/SBIN426055190312", paidVia: "manual", reminders: [sent(22)] },
+    { id: "s8", buyerName: "Lakshmi Electricals", invoiceNumber: "INV-2026-0405", amount: 64800, invoiceDate: ago(25), termsDays: 15, paidOn: ago(4), paymentRef: "UPI/426811034921", paidVia: "manual", reminders: [sent(8, "3:40 pm")] },
+    { id: "s10", buyerName: "Om Sai Plastics", invoiceNumber: "INV-2026-0388", amount: 87500, invoiceDate: ago(30), termsDays: 15, paidOn: ago(6), paymentRef: "IMPS/426390118834", paidVia: "manual", reminders: [sent(9, "12:10 pm")] },
   ];
 }

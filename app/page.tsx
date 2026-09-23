@@ -3,16 +3,43 @@
 import { useCallback, useEffect, useState } from "react";
 import AddInvoiceSheet from "@/components/AddInvoiceSheet";
 import BankCreditSheet from "@/components/BankCreditSheet";
+import ConnectBankSheet from "@/components/ConnectBankSheet";
+import Dashboard from "@/components/Dashboard";
+import InvoiceDetailSheet from "@/components/InvoiceDetailSheet";
 import InvoiceList from "@/components/InvoiceList";
-import { formatDate, formatINR, seedInvoices, todayISO, type BankCredit, type Invoice } from "@/lib/invoices";
+import ReminderSheet from "@/components/ReminderSheet";
+import { channelLabel, nowTime } from "@/lib/business";
+import {
+  formatDate,
+  formatINR,
+  getStatus,
+  seedInvoices,
+  todayISO,
+  type BankCredit,
+  type Channel,
+  type Invoice,
+} from "@/lib/invoices";
+
+type Tab = "invoices" | "dashboard";
+
+function randomRef(prefix: string) {
+  return `${prefix}${Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("")}`;
+}
 
 export default function Home() {
   // "Today" comes from the viewer's device clock, so it's resolved after mount.
   const [today, setToday] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [tab, setTab] = useState<Tab>("invoices");
+  const [bank, setBank] = useState<string | null>(null);
+
   const [addOpen, setAddOpen] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
   const [credit, setCredit] = useState<{ key: number; prefillId?: string } | null>(null);
-  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [reminderId, setReminderId] = useState<string | null>(null);
+
+  const [highlightIds, setHighlightIds] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,18 +50,19 @@ export default function Home() {
 
   useEffect(() => {
     if (!toast) return;
-    const id = setTimeout(() => setToast(null), 4000);
+    const id = setTimeout(() => setToast(null), 4500);
     return () => clearTimeout(id);
   }, [toast]);
 
-  const flash = (id: string) => {
-    setHighlightId(id);
-    setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 2500);
+  const flash = (...ids: string[]) => {
+    setHighlightIds(ids);
+    setTimeout(() => setHighlightIds((h) => (h === ids ? [] : h)), 2500);
   };
 
   const addInvoice = (inv: Omit<Invoice, "id">) => {
     const id = `u${Date.now()}`;
     setInvoices((list) => [...list, { ...inv, id }]);
+    setTab("invoices");
     setToast(`Invoice ${inv.invoiceNumber} added`);
     flash(id);
   };
@@ -42,70 +70,146 @@ export default function Home() {
   const confirmCredit = (invoiceId: string, c: BankCredit) => {
     const inv = invoices.find((i) => i.id === invoiceId);
     setInvoices((list) =>
-      list.map((i) => (i.id === invoiceId ? { ...i, paidOn: today!, paymentRef: c.reference || undefined } : i)),
+      list.map((i) =>
+        i.id === invoiceId ? { ...i, paidOn: today!, paymentRef: c.reference || undefined, paidVia: "manual" } : i,
+      ),
     );
     setCredit(null);
     if (inv) setToast(`${formatINR(c.amount)} from ${inv.buyerName} matched · ${inv.invoiceNumber} marked paid`);
     flash(invoiceId);
   };
 
-  const openCredit = useCallback((prefillId?: string) => setCredit({ key: Date.now(), prefillId }), []);
+  // Simulated Account Aggregator fetch: 1–2 open sample invoices turn out to be paid already.
+  const connectBank = (bankName: string) => {
+    const open = invoices.filter((i) => !i.paidOn && i.id.startsWith("s"));
+    const shuffled = [...open].sort(() => Math.random() - 0.5);
+    const matched = shuffled.slice(0, Math.min(open.length, 1 + Math.floor(Math.random() * 2)));
+    const ids = new Set(matched.map((i) => i.id));
+    setInvoices((list) =>
+      list.map((i) => (ids.has(i.id) ? { ...i, paidOn: today!, paidVia: "bank", paymentRef: randomRef("NEFT/") } : i)),
+    );
+    setBank(bankName);
+    setConnectOpen(false);
+    setTab("invoices");
+    setToast(
+      matched.length
+        ? `${bankName} connected · ${matched.length === 1 ? "1 invoice" : `${matched.length} invoices`} auto-matched from bank statement`
+        : `${bankName} connected`,
+    );
+    flash(...matched.map((i) => i.id));
+  };
+
+  const sendReminder = (invoiceId: string, message: string, channels: Channel[]) => {
+    const date = today!;
+    setInvoices((list) =>
+      list.map((i) =>
+        i.id === invoiceId ? { ...i, reminders: [...(i.reminders ?? []), { date, time: nowTime(), channels, message }] } : i,
+      ),
+    );
+    const inv = invoices.find((i) => i.id === invoiceId);
+    setReminderId(null);
+    if (inv) setToast(`Reminder sent to ${inv.buyerName} via ${channelLabel(channels)} · ${formatDate(date)}`);
+    flash(invoiceId);
+  };
+
+  const openCredit = useCallback((prefillId?: string) => {
+    setDetailId(null);
+    setCredit({ key: Date.now(), prefillId });
+  }, []);
+  const openReminder = useCallback((id: string) => {
+    setDetailId(null);
+    setReminderId(id);
+  }, []);
   const closeCredit = useCallback(() => setCredit(null), []);
   const closeAdd = useCallback(() => setAddOpen(false), []);
+  const closeConnect = useCallback(() => setConnectOpen(false), []);
+  const closeDetail = useCallback(() => setDetailId(null), []);
+  const closeReminder = useCallback(() => setReminderId(null), []);
+
+  const detail = invoices.find((i) => i.id === detailId);
+  const reminderInv = invoices.find((i) => i.id === reminderId);
 
   return (
     <div className="min-h-dvh">
       <header className="bg-ink text-white">
-        <div className="mx-auto max-w-6xl px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
-          <div className="flex items-center gap-2.5">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-lg font-extrabold">₹</div>
-            <span className="text-sm font-semibold tracking-wide text-white/70">Invoice Tracker</span>
+        <div className="mx-auto max-w-6xl px-4 pb-20 pt-5 sm:px-6 sm:pt-7">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-lg font-extrabold">₹</div>
+              <span className="text-sm font-semibold tracking-wide text-white/70">Invoice Tracker</span>
+            </div>
+            {bank ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-paid/25 px-3 py-1.5 text-xs font-bold text-[#8fe0b6]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#5fd49a]" />
+                Bank connected ✓<span className="hidden font-semibold text-white/60 sm:inline">· {bank}</span>
+              </span>
+            ) : (
+              <button
+                onClick={() => setConnectOpen(true)}
+                className="rounded-full border border-white/25 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-white/10"
+              >
+                Connect bank account
+              </button>
+            )}
           </div>
-          <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+
+          <div className="mt-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Who owes you, and since when</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+                {tab === "invoices" ? "Who owes you, and since when" : "Collections at a glance"}
+              </h1>
               <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-white/65">
-                Deadlines follow the MSMED Act: buyers must pay within 15 days, or up to 45 days with a written agreement.
+                {tab === "invoices"
+                  ? "Deadlines follow the MSMED Act: buyers must pay within 15 days, or up to 45 days with a written agreement."
+                  : "What you're owed, how late it is, and whether reminders are working."}
                 {today && <span className="text-white/85"> Today is {formatDate(today)}.</span>}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
-              <button
-                onClick={() => openCredit()}
-                className="rounded-xl border border-white/20 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-              >
-                Simulate bank credit
-              </button>
-              <button
-                onClick={() => setAddOpen(true)}
-                className="rounded-xl bg-white px-4 py-3 text-sm font-bold text-ink transition hover:bg-white/90"
-              >
-                + Add invoice
-              </button>
-            </div>
+            <button
+              onClick={() => setAddOpen(true)}
+              className="shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-bold text-ink transition hover:bg-white/90"
+            >
+              + Add invoice
+            </button>
           </div>
+
+          <nav className="mt-7 flex w-fit rounded-full bg-white/10 p-1 text-sm font-bold" aria-label="Sections">
+            {(["invoices", "dashboard"] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                aria-current={tab === t ? "page" : undefined}
+                className={`rounded-full px-4 py-2 transition ${tab === t ? "bg-white text-ink" : "text-white/70 hover:text-white"}`}
+              >
+                {t === "invoices" ? "Invoices" : "Dashboard"}
+              </button>
+            ))}
+          </nav>
         </div>
       </header>
 
       <main className="mx-auto -mt-12 max-w-6xl px-4 pb-16 sm:px-6">
         <div className="rounded-[28px] bg-paper p-4 shadow-[0_-8px_30px_-12px_rgba(15,29,46,0.35)] sm:p-6">
-          {today ? (
-            <InvoiceList invoices={invoices} today={today} highlightId={highlightId} onRecordCredit={openCredit} />
-          ) : (
+          {!today ? (
             <div className="h-64 animate-pulse rounded-3xl bg-line/50" />
+          ) : tab === "invoices" ? (
+            <InvoiceList
+              invoices={invoices}
+              today={today}
+              highlightIds={highlightIds}
+              onOpen={setDetailId}
+              onMarkPaid={openCredit}
+              onSendReminder={openReminder}
+            />
+          ) : (
+            <Dashboard invoices={invoices} today={today} />
           )}
         </div>
       </main>
 
-      {today && (
-        <AddInvoiceSheet
-          open={addOpen}
-          today={today}
-          existingNumbers={invoices.map((i) => i.invoiceNumber)}
-          onClose={closeAdd}
-          onAdd={addInvoice}
-        />
-      )}
+      {today && <AddInvoiceSheet open={addOpen} today={today} invoices={invoices} onClose={closeAdd} onAdd={addInvoice} />}
+
+      {connectOpen && <ConnectBankSheet open onClose={closeConnect} onConnected={connectBank} />}
 
       {credit && (
         <BankCreditSheet
@@ -118,15 +222,32 @@ export default function Home() {
         />
       )}
 
+      {detail && today && (
+        <InvoiceDetailSheet
+          invoice={detail}
+          today={today}
+          onClose={closeDetail}
+          onSendReminder={() => openReminder(detail.id)}
+          onMarkPaid={() => openCredit(detail.id)}
+        />
+      )}
+
+      {reminderInv && today && (
+        <ReminderSheet
+          invoice={reminderInv}
+          daysOverdue={getStatus(reminderInv, today).daysOverdue}
+          onClose={closeReminder}
+          onSend={(message, channels) => sendReminder(reminderInv.id, message, channels)}
+        />
+      )}
+
       <div
         aria-live="polite"
-        className={`pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4 transition ${
-          toast ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+        className={`pointer-events-none fixed inset-x-0 top-4 z-[60] flex justify-center px-4 transition ${
+          toast ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
         }`}
       >
-        {toast && (
-          <div className="rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white shadow-xl">{toast}</div>
-        )}
+        {toast && <div className="max-w-md rounded-2xl bg-ink px-5 py-3 text-center text-sm font-semibold text-white shadow-xl">{toast}</div>}
       </div>
     </div>
   );

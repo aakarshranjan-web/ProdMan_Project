@@ -74,8 +74,8 @@ export default function BankCreditSheet({ open, invoices, prefillId, onClose, on
     <Sheet
       open={open}
       onClose={onClose}
-      title="Simulate bank credit"
-      subtitle="Pretend a payment just landed in your account via Account Aggregator. We'll try to match it to an open invoice."
+      title="Record payment received"
+      subtitle="Enter the payment as it shows on your bank statement. We'll match it to the right open invoice."
     >
       <form onSubmit={check} className="space-y-4">
         <Field label="Quick fill from an open invoice" hint="Or type your own values below to test the matching.">
@@ -91,7 +91,7 @@ export default function BankCreditSheet({ open, invoices, prefillId, onClose, on
 
         <div className="rounded-2xl border border-dashed border-line p-4">
           <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-soft">
-            <span className="h-2 w-2 rounded-full bg-brand" /> Incoming credit
+            <span className="h-2 w-2 rounded-full bg-brand" /> Payment details
           </div>
           <div className="space-y-3">
             <Field label="Received from">
