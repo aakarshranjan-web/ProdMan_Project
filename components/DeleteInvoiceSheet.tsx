@@ -1,6 +1,7 @@
 "use client";
 
 import Sheet from "./Sheet";
+import { btn, IconAlert, IconCheck, Steps } from "./ui";
 import { formatINR, type Invoice } from "@/lib/invoices";
 
 interface Props {
@@ -22,22 +23,30 @@ export default function DeleteInvoiceSheet({ invoice, onCancel, onConfirm, reque
 
   return (
     <Sheet open onClose={onCancel} title="Delete invoice?" subtitle={`${invoice.buyerName} · ${invoice.invoiceNumber} · ${formatINR(invoice.amount)}`}>
-      {requestedBy && <RequestedBy name={requestedBy} action="Delete" />}
+      {requestedBy && (
+        <>
+          <Steps current={2} labels={["Admin approval", "Confirm delete"]} />
+          <RequestedBy name={requestedBy} action="Delete" />
+        </>
+      )}
       {hasHistory ? (
-        <div className="rounded-2xl bg-over-bg/70 px-4 py-3 text-sm leading-relaxed">
+        <div className="flex gap-2.5 rounded-2xl bg-over-bg/70 px-4 py-3 text-sm leading-relaxed">
+          <IconAlert size={16} className="mt-0.5 text-over" />
+          <div>
           {history.map((line) => (
             <p key={line as string}>{line}</p>
           ))}
           <p className="mt-1 font-semibold">Deleting it will remove {esc && reminders ? "those records" : "that record"} too. Delete anyway?</p>
+          </div>
         </div>
       ) : (
         <p className="text-sm leading-relaxed text-ink-soft">This removes the invoice from your list and dashboard. You can&apos;t undo this.</p>
       )}
       <div className="mt-6 grid gap-2 sm:grid-cols-2">
-        <button onClick={onCancel} className="rounded-xl border border-line py-3.5 text-base font-bold text-ink-soft hover:bg-paper hover:text-ink">
+        <button onClick={onCancel} className={btn("secondary")}>
           Cancel
         </button>
-        <button onClick={onConfirm} className="rounded-xl bg-over py-3.5 text-base font-bold text-white transition hover:brightness-95">
+        <button onClick={onConfirm} className={btn("danger")}>
           {hasHistory ? "Delete anyway" : "Delete invoice"}
         </button>
       </div>
@@ -48,7 +57,10 @@ export default function DeleteInvoiceSheet({ invoice, onCancel, onConfirm, reque
 export function RequestedBy({ name, action }: { name: string; action: "Edit" | "Delete" }) {
   return (
     <p className="mb-4 flex items-center gap-2 rounded-xl bg-paper px-3.5 py-2.5 text-sm">
-      <span className="rounded-full bg-paid-bg px-2 py-0.5 text-xs font-bold text-paid">Admin approved</span>
+      <span className="inline-flex items-center gap-1 rounded-full bg-paid-bg px-2 py-0.5 text-xs font-bold text-paid">
+        <IconCheck size={11} />
+        Admin approved
+      </span>
       <span>
         {action} requested by <b>{name}</b>
       </span>

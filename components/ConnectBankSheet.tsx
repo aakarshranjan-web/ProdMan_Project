@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Sheet from "./Sheet";
+import { btn, Spinner, Steps } from "./ui";
 
 const BANKS = [
   "State Bank of India",
@@ -50,15 +51,15 @@ export default function ConnectBankSheet({ open, onClose, onConnected }: Props) 
           : "Shared through an RBI-regulated Account Aggregator. You can revoke this any time."
       }
     >
-      <div className="mb-5 flex items-center gap-2 text-xs font-bold text-ink-soft">
-        <span className={`grid h-6 w-6 place-items-center rounded-full ${step === 1 ? "bg-ink text-white" : "bg-paid text-white"}`}>
-          {step === 1 ? "1" : "✓"}
-        </span>
-        Select your bank
-        <span className="h-px w-6 bg-line" />
-        <span className={`grid h-6 w-6 place-items-center rounded-full ${step === 2 ? "bg-ink text-white" : "bg-line text-ink-soft"}`}>2</span>
-        Approve
-      </div>
+      <Steps
+        current={step}
+        labels={["Select your bank", "Approve read-only access"]}
+        next={
+          step === 1
+            ? "review and approve read-only access"
+            : "we fetch your statement and auto-match payments to open invoices"
+        }
+      />
 
       {step === 1 ? (
         <>
@@ -68,7 +69,7 @@ export default function ConnectBankSheet({ open, onClose, onConnected }: Props) 
                 key={b}
                 onClick={() => setBank(b)}
                 className={`flex items-center gap-3 rounded-2xl border p-3 text-left text-sm font-bold transition ${
-                  bank === b ? "border-brand bg-brand/5 ring-4 ring-brand/10" : "border-line hover:border-ink/30"
+                  bank === b ? "border-brand bg-brand/5 ring-4 ring-brand/10" : "border-line hover:border-ink/25 hover:bg-paper/60"
                 }`}
               >
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-paper text-xs font-extrabold text-ink-soft">
@@ -81,7 +82,7 @@ export default function ConnectBankSheet({ open, onClose, onConnected }: Props) 
           <button
             disabled={!bank}
             onClick={() => setStep(2)}
-            className="mt-5 w-full rounded-xl bg-ink py-3.5 text-base font-bold text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
+            className={`${btn("primary")} mt-5`}
           >
             Continue
           </button>
@@ -116,9 +117,9 @@ export default function ConnectBankSheet({ open, onClose, onConnected }: Props) 
           <button
             onClick={approve}
             disabled={approving}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3.5 text-base font-bold text-white transition hover:bg-brand-dark disabled:opacity-80"
+            className={`${btn("primary")} mt-5 disabled:opacity-80`}
           >
-            {approving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
+            {approving && <Spinner className="h-4 w-4 border-2 border-white/40 border-t-white" />}
             {approving ? "Fetching statement…" : "Approve"}
           </button>
           {!approving && (

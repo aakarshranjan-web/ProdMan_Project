@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import StatusBadge from "./StatusBadge";
+import { btn, EmptyState } from "./ui";
 import { EscalatedBadge } from "./EscalateSheet";
 import { paidLabel } from "./InvoiceDetailSheet";
 import RowMenu from "./RowMenu";
@@ -148,9 +149,7 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onR
       </p>
 
       {rows.length === 0 && (
-        <div className="rounded-3xl border border-dashed border-line bg-card px-6 py-12 text-center text-ink-soft">
-          No invoices yet. Add your first one to start tracking.
-        </div>
+        <EmptyState title="No invoices yet" hint="Add your first invoice with + Add invoice to start tracking deadlines." />
       )}
 
       {/* Phones: cards */}
@@ -159,7 +158,9 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onR
           <li
             key={inv.id}
             onClick={() => onOpen(inv.id)}
-            className={`cursor-pointer rounded-2xl border bg-card p-4 ${info.status === "overdue" ? "border-over/25" : "border-line"} ${
+            className={`cursor-pointer rounded-2xl border bg-card p-4 shadow-sm transition hover:shadow-md ${
+              info.status === "overdue" ? "border-over/25 shadow-[inset_3px_0_0_var(--color-over)]" : "border-line"
+            } ${
               highlightIds.includes(inv.id) ? "flash" : ""
             }`}
           >
@@ -199,14 +200,14 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onR
                 {info.status === "overdue" && (
                   <button
                     onClick={() => onSendReminder(inv.id)}
-                    className="flex-1 rounded-xl bg-brand py-2.5 text-sm font-bold text-white hover:bg-brand-dark"
+                    className={`${btn("primary", "md")} flex-1`}
                   >
                     Send Reminder
                   </button>
                 )}
                 <button
                   onClick={() => onRecordPayment(inv.id)}
-                  className="flex-1 rounded-xl border border-line py-2.5 text-sm font-bold text-brand hover:bg-paper"
+                  className={`${btn(info.status === "overdue" ? "secondary" : "primary", "md")} flex-1`}
                 >
                   Record Payment
                 </button>
@@ -219,7 +220,7 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onR
                 ) : (
                   <button
                     onClick={() => onEscalate(inv.id)}
-                    className="w-full rounded-xl border border-[#4b3aa8]/30 py-2.5 text-sm font-bold text-[#4b3aa8] hover:bg-[#ece9fb]"
+                    className={`${btn("secondary", "md")} w-full`}
                   >
                     Escalate to CA
                   </button>
@@ -252,7 +253,9 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onR
                 <tr
                   key={inv.id}
                   onClick={() => onOpen(inv.id)}
-                  className={`cursor-pointer transition hover:bg-paper/40 ${highlightIds.includes(inv.id) ? "flash" : ""}`}
+                  className={`cursor-pointer transition-colors hover:bg-paper/70 ${
+                    info.status === "overdue" ? "shadow-[inset_3px_0_0_var(--color-over)]" : ""
+                  } ${highlightIds.includes(inv.id) ? "flash" : ""}`}
                 >
                   <td className="min-w-[10rem] px-3 py-4 font-bold">{inv.buyerName}</td>
                   <td className="whitespace-nowrap px-3 py-4 font-mono text-xs text-ink-soft">{inv.invoiceNumber}</td>
@@ -289,14 +292,14 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onR
                             {info.status === "overdue" && (
                               <button
                                 onClick={() => onSendReminder(inv.id)}
-                                className="whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-dark"
+                                className={`${btn("primary", "sm")} whitespace-nowrap`}
                               >
                                 Send Reminder
                               </button>
                             )}
                             <button
                               onClick={() => onRecordPayment(inv.id)}
-                              className="whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-bold text-brand hover:bg-brand/10"
+                              className={`${btn("ghost", "sm")} whitespace-nowrap px-2.5`}
                             >
                               Record Payment
                             </button>
@@ -309,7 +312,7 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onR
                             ) : (
                               <button
                                 onClick={() => onEscalate(inv.id)}
-                                className="whitespace-nowrap rounded-lg border border-[#4b3aa8]/30 px-3 py-1.5 text-xs font-bold text-[#4b3aa8] hover:bg-[#ece9fb]"
+                                className={`${btn("secondary", "sm")} whitespace-nowrap`}
                               >
                                 Escalate to CA
                               </button>

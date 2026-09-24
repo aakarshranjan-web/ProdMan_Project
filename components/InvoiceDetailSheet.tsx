@@ -2,6 +2,7 @@
 
 import Sheet from "./Sheet";
 import StatusBadge from "./StatusBadge";
+import { btn, EmptyState } from "./ui";
 import { EscalatedBadge } from "./EscalateSheet";
 import {
   canEscalate,
@@ -122,7 +123,7 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
           </span>
         </div>
         {history.length === 0 ? (
-          <p className="rounded-2xl bg-paper px-4 py-3 text-sm text-ink-soft">No payments received yet.</p>
+          <EmptyState title="No payments received yet" hint={`Payments into ${inv.virtualAccount} will show up here.`} />
         ) : (
           <ol className="space-y-2">
             {[...history].reverse().map(({ p, after }) => (
@@ -149,7 +150,7 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
           <span className="rounded-full bg-paper px-2.5 py-1 text-xs font-bold text-ink-soft">Reminders sent: {reminders.length}</span>
         </div>
         {reminders.length === 0 ? (
-          <p className="rounded-2xl bg-paper px-4 py-3 text-sm text-ink-soft">No reminders sent yet.</p>
+          <EmptyState title="No reminders sent yet" hint={info.status === "overdue" ? "Send one from the button below." : "You can send reminders once the invoice is overdue."} />
         ) : (
           <ol className="space-y-2">
             {reminders.map((r, i) => (
@@ -178,20 +179,20 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
       {info.status !== "paid" && (
         <div className="mt-6 grid gap-2 sm:grid-cols-2">
           {info.status === "overdue" && (
-            <button onClick={onSendReminder} className="rounded-xl bg-brand py-3 text-sm font-bold text-white hover:bg-brand-dark">
+            <button onClick={onSendReminder} className={`${btn("primary", "md")} py-3`}>
               Send Reminder
             </button>
           )}
           <button
             onClick={onRecordPayment}
-            className={`rounded-xl border border-line py-3 text-sm font-bold hover:bg-paper ${info.status === "overdue" ? "" : "sm:col-span-2"}`}
+            className={`${btn(info.status === "overdue" ? "secondary" : "primary", "md")} py-3 ${info.status === "overdue" ? "" : "sm:col-span-2"}`}
           >
             Record Payment
           </button>
           {canEscalate(info) && !inv.escalation && (
             <button
               onClick={onEscalate}
-              className="rounded-xl border border-[#4b3aa8]/30 py-3 text-sm font-bold text-[#4b3aa8] hover:bg-[#ece9fb] sm:col-span-2"
+              className={`${btn("secondary", "md")} py-3 sm:col-span-2`}
             >
               Escalate to CA
             </button>

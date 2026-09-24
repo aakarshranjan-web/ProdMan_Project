@@ -1,5 +1,6 @@
 import { formatDate, formatINR, addDays } from "@/lib/invoices";
 import { WHATSAPP_INVOICE } from "@/lib/extract";
+import { btn } from "./ui";
 
 interface Props {
   today: string;
@@ -55,7 +56,7 @@ export default function WhatsAppThread({ today, invoiceNumber, onImport }: Props
         <button
           type="button"
           onClick={onImport}
-          className="w-full rounded-xl bg-[#128c7e] py-3 text-sm font-bold text-white transition hover:brightness-95"
+          className={`${btn("primary", "md")} w-full py-3`}
         >
           Import this invoice
         </button>

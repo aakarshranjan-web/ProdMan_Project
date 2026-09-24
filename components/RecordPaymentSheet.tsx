@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Sheet, { Field, inputClass } from "./Sheet";
+import { btn } from "./ui";
 import { formatDate, formatINR, getStatus, type Invoice } from "@/lib/invoices";
 
 interface Props {
@@ -84,12 +85,12 @@ export default function RecordPaymentSheet({ invoice, today, onClose, onRecord }
         </div>
         {Number.isFinite(value) && value > 0 && value < balance && (
           <p className="text-sm text-ink-soft">
-            {formatINR(balance - value)} will still be due after this payment.
+            {formatINR(balance - value)} will still be due after this payment. The invoice will show as Partially paid.
           </p>
         )}
         <button
           type="submit"
-          className="w-full rounded-xl bg-brand py-3.5 text-base font-bold text-white transition hover:bg-brand-dark active:scale-[0.99]"
+          className={btn("primary")}
         >
           Record payment
         </button>

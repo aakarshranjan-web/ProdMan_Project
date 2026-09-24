@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { inputClass } from "./Sheet";
+import { btn, EmptyState, IconCheck, Spinner } from "./ui";
 import { formatDate, formatINR, type Invoice, type Payment } from "@/lib/invoices";
 
 interface Txn {
@@ -48,7 +49,7 @@ export default function Transactions({ invoices }: { invoices: Invoice[] }) {
   };
 
   return (
-    <section className="rounded-3xl border border-line bg-card p-4 sm:p-6">
+    <section className="rounded-3xl border border-line bg-card p-4 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="text-base font-bold tracking-tight">Transactions</h3>
@@ -87,16 +88,19 @@ export default function Transactions({ invoices }: { invoices: Invoice[] }) {
         <button
           onClick={clear}
           disabled={!filtered}
-          className="rounded-xl border border-line px-4 py-2.5 text-sm font-bold text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+          className={btn("secondary", "md")}
         >
           Clear filters
         </button>
       </div>
 
       {shown.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-ink-soft">
-          No transactions found for this filter
-        </p>
+        <div className="mt-4">
+          <EmptyState
+            title={all.length ? "No transactions found for this filter" : "No transactions yet"}
+            hint={all.length ? "Try another virtual account or date range, or clear the filters." : "Payments recorded against invoices appear here."}
+          />
+        </div>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-2xl border border-line">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -112,7 +116,7 @@ export default function Transactions({ invoices }: { invoices: Invoice[] }) {
             </thead>
             <tbody className="divide-y divide-line">
               {shown.map(({ payment: p, invoice: inv }) => (
-                <tr key={p.id}>
+                <tr key={p.id} className="transition-colors hover:bg-paper/70">
                   <td className="whitespace-nowrap px-3 py-3">
                     <div className="tnum">{formatDate(p.date)}</div>
                     <div className="text-xs text-ink-soft">{p.time}</div>
@@ -123,11 +127,16 @@ export default function Transactions({ invoices }: { invoices: Invoice[] }) {
                   <td className="tnum whitespace-nowrap px-3 py-3 text-right font-extrabold">{formatINR(p.amount)}</td>
                   <td className="px-3 py-3">
                     {p.settledOn ? (
-                      <span className="inline-flex whitespace-nowrap rounded-full bg-paid-bg px-2.5 py-1 text-xs font-bold text-paid" title={`Settled to ${p.settledTo ?? "main account"}`}>
+                      <span
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-paid-bg px-2.5 py-1 text-xs font-bold text-paid ring-1 ring-inset ring-paid/15"
+                        title={`Settled to ${p.settledTo ?? "main account"}`}
+                      >
+                        <IconCheck size={12} />
                         Settled to main account
                       </span>
                     ) : (
-                      <span className="settling inline-flex whitespace-nowrap rounded-full bg-brand/10 px-2.5 py-1 text-xs font-bold text-brand">
+                      <span className="settling inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-brand/10 px-2.5 py-1 text-xs font-bold text-brand ring-1 ring-inset ring-brand/15">
+                        <Spinner className="h-3 w-3 border-2 border-brand/30 border-t-brand" />
                         Received in VA
                       </span>
                     )}

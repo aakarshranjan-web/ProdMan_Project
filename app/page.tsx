@@ -11,6 +11,7 @@ import InvoiceDetailSheet from "@/components/InvoiceDetailSheet";
 import InvoiceList from "@/components/InvoiceList";
 import LoginScreen from "@/components/LoginScreen";
 import RecordPaymentSheet from "@/components/RecordPaymentSheet";
+import { IconCheck } from "@/components/ui";
 import ReminderSheet from "@/components/ReminderSheet";
 import { channelLabel, nowTime } from "@/lib/business";
 import { clearSession, loadSession, saveSession, type Session } from "@/lib/session";
@@ -195,6 +196,7 @@ export default function Home() {
     setInvoices((list) =>
       list.map((i) => (i.id === invoiceId ? { ...i, escalation: { caName, date: today!, time: nowTime() } } : i)),
     );
+    setToast(`Connection request sent to ${caName}`);
   };
 
   const openEscalate = useCallback((id: string) => {
@@ -292,8 +294,8 @@ export default function Home() {
             </div>
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               {bank ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-paid/25 px-3 py-1.5 text-xs font-bold text-[#8fe0b6]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#5fd49a]" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/40 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-inset ring-white/15">
+                  <IconCheck size={12} />
                   Bank connected ✓<span className="hidden font-semibold text-white/60 sm:inline">· {bank}</span>
                 </span>
               ) : (
@@ -338,14 +340,14 @@ export default function Home() {
             </div>
             <button
               onClick={() => setAddOpen(true)}
-              className="shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-bold text-ink transition hover:bg-white/90"
+              className="shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-bold text-ink shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-white/95 active:translate-y-0"
             >
               + Add invoice
             </button>
           </div>
 
           <nav className="mt-7 flex w-fit rounded-full bg-white/10 p-1 text-sm font-bold" aria-label="Sections">
-            {(["invoices", "dashboard"] as Tab[]).map((t) => (
+            {(["dashboard", "invoices"] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -425,6 +427,7 @@ export default function Home() {
           onApproved={(name) => {
             setRequestedBy(name);
             setApproval(null);
+            setToast(`Admin approval granted · ${approval.action === "edit" ? "you can now edit" : "confirm to delete"} ${approvalInv.invoiceNumber}`);
             if (approval.action === "edit") setEditId(approvalInv.id);
             else setDeleteId(approvalInv.id);
           }}
@@ -460,11 +463,19 @@ export default function Home() {
 
       <div
         aria-live="polite"
-        className={`pointer-events-none fixed inset-x-0 top-4 z-[60] flex justify-center px-4 transition ${
-          toast ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
+        // Top on phones (bottom sheets fill the lower screen); bottom-right on wider screens, clear of centred dialogs.
+        className={`pointer-events-none fixed inset-x-0 top-4 z-[60] flex justify-center px-4 transition sm:inset-x-auto sm:top-auto sm:bottom-6 sm:right-6 sm:justify-end sm:px-0 ${
+          toast ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0 sm:translate-y-4"
         }`}
       >
-        {toast && <div className="max-w-md rounded-2xl bg-ink px-5 py-3 text-center text-sm font-semibold text-white shadow-xl">{toast}</div>}
+        {toast && (
+          <div className="flex max-w-md items-center gap-2.5 rounded-2xl bg-ink px-4 py-3 sm:max-w-xs text-sm font-semibold text-white shadow-xl ring-1 ring-white/10">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand text-white">
+              <IconCheck size={13} />
+            </span>
+            {toast}
+          </div>
+        )}
       </div>
     </div>
   );

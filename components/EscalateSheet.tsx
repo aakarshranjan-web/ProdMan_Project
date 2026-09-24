@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Sheet from "./Sheet";
+import { btn, IconShield, Steps, SuccessState } from "./ui";
 import { formatDate, formatINR, type Invoice } from "@/lib/invoices";
 import { APP_NAME } from "@/lib/business";
 import { CA_PARTNERS, type CAPartner } from "@/lib/caPartners";
@@ -21,19 +22,18 @@ export default function EscalateSheet({ invoice, daysOverdue, onClose, onRequest
   if (sentTo) {
     return (
       <Sheet open onClose={onClose} title="Request sent">
-        <div className="flex flex-col items-center py-4 text-center">
-          <div className="grid h-14 w-14 place-items-center rounded-full bg-paid-bg text-2xl text-paid">✓</div>
-          <p className="mt-4 text-lg font-bold">Request sent to {sentTo.name}.</p>
+        <Steps current={2} labels={["Choose a CA partner", "Request sent"]} />
+        <SuccessState title={`Request sent to ${sentTo.name}.`}>
           <p className="mt-1 text-ink-soft">They&apos;ll reach out within 1 business day.</p>
           {invoice.escalation && (
             <p className="mt-4 rounded-full bg-paper px-3 py-1.5 text-xs font-semibold text-ink-soft">
               Requested {formatDate(invoice.escalation.date)}, {invoice.escalation.time}
             </p>
           )}
-          <button onClick={onClose} className="mt-6 w-full rounded-xl bg-ink py-3.5 text-base font-bold text-white hover:bg-ink/90">
+          <button onClick={onClose} className={`${btn("primary")} mt-6`}>
             Done
           </button>
-        </div>
+        </SuccessState>
       </Sheet>
     );
   }
@@ -48,9 +48,17 @@ export default function EscalateSheet({ invoice, daysOverdue, onClose, onRequest
 
   return (
     <Sheet open onClose={onClose} title="Escalate to a CA partner">
-      <p className="rounded-2xl bg-due-bg/70 px-4 py-3 text-sm leading-relaxed text-ink">
+      <Steps
+        current={1}
+        labels={["Choose a CA partner", "Request sent"]}
+        next="the CA partner you pick contacts you within 1 business day"
+      />
+      <p className="flex gap-2.5 rounded-2xl bg-due-bg/70 px-4 py-3 text-sm leading-relaxed text-ink">
+        <IconShield size={16} className="mt-0.5 text-due" />
+        <span>
         This invoice has been overdue for 45+ days. We can connect you with a vetted CA partner who can file an MSME
         Samadhaan complaint on your behalf. {APP_NAME} does not file complaints directly — a CA handles this step.
+        </span>
       </p>
 
       <dl className="mt-4 divide-y divide-line rounded-2xl border border-line bg-paper/40 text-sm">
@@ -65,7 +73,10 @@ export default function EscalateSheet({ invoice, daysOverdue, onClose, onRequest
       <h3 className="mb-2 mt-6 font-bold">Choose a CA partner</h3>
       <ul className="space-y-2.5">
         {CA_PARTNERS.map((ca) => (
-          <li key={ca.id} className="flex flex-col gap-3 rounded-2xl border border-line p-4 sm:flex-row sm:items-center sm:justify-between">
+          <li
+            key={ca.id}
+            className="flex flex-col gap-3 rounded-2xl border border-line p-4 transition hover:border-brand/40 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+          >
             <div className="min-w-0">
               <p className="font-bold">{ca.name}</p>
               <p className="text-xs text-ink-soft">{ca.city}</p>
@@ -81,7 +92,7 @@ export default function EscalateSheet({ invoice, daysOverdue, onClose, onRequest
                 onRequest(ca.name);
                 setSentTo(ca);
               }}
-              className="shrink-0 rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-white transition hover:bg-ink/90"
+              className={`${btn("primary", "md")} shrink-0`}
             >
               Request Connection
             </button>
@@ -100,10 +111,10 @@ export function EscalatedBadge({ invoice, full = false }: { invoice: Invoice; fu
   if (!e) return null;
   const date = full ? formatDate(e.date) : formatDate(e.date).replace(/ \d{4}$/, "");
   return (
-    <span className={`inline-flex ${full ? "" : "max-w-[12rem]"} items-start gap-1.5 rounded-lg bg-[#ece9fb] px-2.5 py-1.5 text-left text-xs font-bold leading-snug text-[#4b3aa8]`}>
-      <svg className="mt-0.5 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M5 12l5 5L20 7" />
-      </svg>
+    <span
+      className={`inline-flex ${full ? "" : "max-w-[12rem]"} items-start gap-1.5 rounded-lg bg-ink/[0.06] px-2.5 py-1.5 text-left text-xs font-bold leading-snug text-ink ring-1 ring-inset ring-ink/10`}
+    >
+      <IconShield size={12} className="mt-0.5 text-brand" />
       Escalated to {e.caName} — {date}
     </span>
   );

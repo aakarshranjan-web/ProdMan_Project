@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Field, inputClass } from "./Sheet";
+import { btn } from "./ui";
 import { APP_NAME } from "@/lib/business";
 import { DEMO_BUSINESS } from "@/lib/session";
 
@@ -66,7 +67,7 @@ export default function LoginScreen({ onLogin }: Props) {
             </Field>
             <button
               type="submit"
-              className="w-full rounded-xl bg-brand py-3.5 text-base font-bold text-white transition hover:bg-brand-dark active:scale-[0.99]"
+              className={btn("primary")}
             >
               Log in
             </button>

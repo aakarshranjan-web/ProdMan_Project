@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Sheet from "./Sheet";
+import { btn } from "./ui";
 import { formatINR, type Channel, type Invoice } from "@/lib/invoices";
 import { paymentLink, reminderMessage } from "@/lib/business";
 
@@ -94,7 +95,7 @@ export default function ReminderSheet({ invoice, daysOverdue, businessName, onCl
       <button
         disabled={channels.length === 0 || !message.trim()}
         onClick={() => onSend(message.trim(), channels)}
-        className="mt-6 w-full rounded-xl bg-brand py-3.5 text-base font-bold text-white transition hover:bg-brand-dark active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+        className={`${btn("primary")} mt-6`}
       >
         Send Reminder
       </button>

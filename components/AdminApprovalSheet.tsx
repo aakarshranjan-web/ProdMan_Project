@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Sheet, { Field, inputClass } from "./Sheet";
+import { btn, IconAlert, IconShield, Steps } from "./ui";
 import { isDemoAdmin } from "@/lib/admin";
 import type { Invoice } from "@/lib/invoices";
 
@@ -36,6 +37,11 @@ export default function AdminApprovalSheet({ action, invoice, onCancel, onApprov
       title="Admin Approval Required"
       subtitle={`${action === "edit" ? "Editing" : "Deleting"} ${invoice.invoiceNumber} (${invoice.buyerName}) needs a system admin to approve it.`}
     >
+      <Steps
+        current={1}
+        labels={["Admin approval", action === "edit" ? "Edit invoice" : "Confirm delete"]}
+        next={action === "edit" ? "the edit form opens with this invoice's details" : "you confirm the delete"}
+      />
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Field label="Requested by" error={errors.requestedBy}>
           <input
@@ -64,7 +70,8 @@ export default function AdminApprovalSheet({ action, invoice, onCancel, onApprov
           />
         </Field>
         {errors.auth && (
-          <p role="alert" className="rounded-xl bg-over-bg px-3.5 py-2.5 text-sm font-semibold text-over">
+          <p role="alert" className="flex items-center gap-2 rounded-xl bg-over-bg px-3.5 py-2.5 text-sm font-semibold text-over">
+            <IconAlert size={14} />
             {errors.auth}
           </p>
         )}
@@ -72,11 +79,12 @@ export default function AdminApprovalSheet({ action, invoice, onCancel, onApprov
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-line py-3.5 text-base font-bold text-ink-soft hover:bg-paper hover:text-ink"
+            className={btn("secondary")}
           >
             Cancel
           </button>
-          <button type="submit" className="rounded-xl bg-ink py-3.5 text-base font-bold text-white transition hover:bg-ink/90">
+          <button type="submit" className={btn("primary")}>
+            <IconShield size={16} />
             Submit
           </button>
         </div>

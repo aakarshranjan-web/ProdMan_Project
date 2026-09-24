@@ -2,6 +2,7 @@
 
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import Transactions from "./Transactions";
+import { IconAlert, IconCheck, IconClock, IconInbox, IconShield } from "./ui";
 import { formatDate, formatINR, STATUTORY_RATE, type Invoice } from "@/lib/invoices";
 import { agingBuckets, collectionRate, expectedInflows, rateTrend, SCHEDULED_OUTFLOWS, summary, totalInterest } from "@/lib/metrics";
 
@@ -18,10 +19,27 @@ function compactINR(n: number) {
   return formatINR(n);
 }
 
-function Card({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: "over" }) {
+function Card({
+  label,
+  value,
+  note,
+  tone,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  tone?: "over";
+  icon: typeof IconCheck;
+}) {
   return (
-    <div className="rounded-3xl border border-line bg-card p-4 sm:p-5">
-      <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">{label}</p>
+    <div className="rounded-3xl border border-line bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">{label}</p>
+        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${tone === "over" ? "bg-over-bg text-over" : "bg-brand/10 text-brand"}`}>
+          <Icon size={14} />
+        </span>
+      </div>
       <p className={`tnum mt-2 text-2xl font-extrabold tracking-tight sm:text-[28px] ${tone === "over" ? "text-over" : ""}`}>{value}</p>
       {note && <p className="mt-1 text-xs leading-snug text-ink-soft">{note}</p>}
     </div>
@@ -30,7 +48,7 @@ function Card({ label, value, note, tone }: { label: string; value: string; note
 
 function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-3xl border border-line bg-card p-4 sm:p-6">
+    <section className="rounded-3xl border border-line bg-card p-4 shadow-sm sm:p-6">
       <h3 className="text-base font-bold tracking-tight">{title}</h3>
       {subtitle && <p className="mt-0.5 text-sm text-ink-soft">{subtitle}</p>}
       <div className="mt-4">{children}</div>
@@ -55,11 +73,15 @@ export default function Dashboard({ invoices, today }: { invoices: Invoice[]; to
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Card label="Total outstanding" value={formatINR(s.outstanding)} note="Balance still due on all invoices" />
-        <Card label="Total overdue" value={formatINR(s.overdue)} note="Past the MSMED deadline" tone={s.overdue ? "over" : undefined} />
-        <Card label="Overdue invoices" value={String(s.overdueCount)} note={s.overdueCount === 1 ? "invoice needs chasing" : "invoices need chasing"} />
+        <Card label="Total outstanding" value={formatINR(s.outstanding)} note="Balance still due on all invoices" icon={IconInbox} />
+        <Card label="Total overdue" value={formatINR(s.overdue)} note="Past the MSMED deadline" tone={s.overdue ? "over" : undefined} icon={IconAlert} />
+        <Card label="Overdue invoices" value={String(s.overdueCount)} note={s.overdueCount === 1 ? "invoice needs chasing" : "invoices need chasing"}
+          tone={s.overdueCount ? "over" : undefined}
+          icon={IconAlert}
+        />
         <Card
           label="Collection rate"
+          icon={IconCheck}
           value={rate.pct === null ? "—" : `${rate.pct}%`}
           note={
             rate.decided
@@ -67,12 +89,13 @@ export default function Dashboard({ invoices, today }: { invoices: Invoice[]; to
               : "Paid within 7 days of first reminder"
           }
         />
-        <Card label="Invoices escalated to CA" value={String(escalated)} note="Handed to a CA partner" />
+        <Card label="Invoices escalated to CA" value={String(escalated)} note="Handed to a CA partner" icon={IconShield} />
         <Card
           label="Total interest accrued (Section 16)"
           value={formatINR(interest)}
           note={`Compounded monthly at 3× RBI Bank Rate (${STATUTORY_RATE}% p.a.) on overdue balances`}
           tone={interest ? "over" : undefined}
+          icon={IconClock}
         />
       </div>
 

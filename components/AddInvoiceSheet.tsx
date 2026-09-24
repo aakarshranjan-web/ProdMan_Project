@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Sheet, { Field, inputClass } from "./Sheet";
 import WhatsAppThread from "./WhatsAppThread";
 import { RequestedBy } from "./DeleteInvoiceSheet";
+import { btn, Spinner, Steps } from "./ui";
 import { addDays, formatDate, type Invoice, type InvoiceFields, type PaymentTerms } from "@/lib/invoices";
 import { mockExtractFromPhoto, mockExtractFromWhatsApp, nextInvoiceNumber, type ExtractedInvoice } from "@/lib/extract";
 
@@ -133,9 +134,9 @@ export default function AddInvoiceSheet({ open, today, invoices, onClose, onAdd,
             // eslint-disable-next-line @next/next/no-img-element
             <img src={photoUrl} alt="Uploaded invoice" className="mb-6 h-40 w-auto max-w-full rounded-xl border border-line object-cover shadow-sm" />
           ) : (
-            <div className="mb-6 grid h-16 w-16 place-items-center rounded-2xl bg-[#128c7e]/10 text-3xl">💬</div>
+            <div className="mb-6 grid h-16 w-16 place-items-center rounded-2xl bg-brand/10 text-3xl">💬</div>
           )}
-          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-line border-t-brand" />
+          <Spinner className="h-8 w-8 border-[3px] border-line border-t-brand" />
           <p className="mt-4 text-lg font-bold">Reading invoice…</p>
           <p className="mt-1 text-sm text-ink-soft">Picking out buyer, amount, date and terms</p>
         </div>
@@ -161,7 +162,12 @@ export default function AddInvoiceSheet({ open, today, invoices, onClose, onAdd,
       title={editing ? "Edit invoice" : "Add invoice"}
       subtitle={editing ? "Fix any details that were entered wrong." : "We'll track it against the MSMED Act payment deadline."}
     >
-      {editing && requestedBy && <RequestedBy name={requestedBy} action="Edit" />}
+      {editing && requestedBy && (
+        <>
+          <Steps current={2} labels={["Admin approval", "Edit invoice"]} next="save to update the invoice, or cancel to discard" />
+          <RequestedBy name={requestedBy} action="Edit" />
+        </>
+      )}
 
       {editing && (reminderCount > 0 || editing.escalation) && (
         <div className="mb-4 rounded-2xl bg-due-bg/70 px-4 py-3 text-sm leading-relaxed">
@@ -181,7 +187,7 @@ export default function AddInvoiceSheet({ open, today, invoices, onClose, onAdd,
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex items-center justify-center gap-2 rounded-xl border border-line bg-paper/60 px-3 py-3 text-sm font-bold transition hover:border-brand hover:text-brand"
+            className={`${btn("secondary", "md")} py-3 hover:border-brand/50 hover:text-brand`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 7h3l2-3h6l2 3h3v13H4z" />
@@ -192,7 +198,7 @@ export default function AddInvoiceSheet({ open, today, invoices, onClose, onAdd,
           <button
             type="button"
             onClick={() => setView("whatsapp")}
-            className="flex items-center justify-center gap-2 rounded-xl border border-line bg-paper/60 px-3 py-3 text-sm font-bold transition hover:border-[#128c7e] hover:text-[#128c7e]"
+            className={`${btn("secondary", "md")} py-3 hover:border-brand/50 hover:text-brand`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 20l1.3-3.9A8 8 0 1 1 8 19.1z" />
@@ -294,7 +300,7 @@ export default function AddInvoiceSheet({ open, today, invoices, onClose, onAdd,
 
         <button
           type="submit"
-          className="w-full rounded-xl bg-brand py-3.5 text-base font-bold text-white transition hover:bg-brand-dark active:scale-[0.99]"
+          className={btn("primary")}
         >
           {editing ? "Save changes" : filledFrom ? "Looks good, save invoice" : "Add invoice"}
         </button>
@@ -302,7 +308,7 @@ export default function AddInvoiceSheet({ open, today, invoices, onClose, onAdd,
           <button
             type="button"
             onClick={close}
-            className="w-full rounded-xl border border-line py-3.5 text-base font-bold text-ink-soft transition hover:bg-paper hover:text-ink"
+            className={btn("secondary")}
           >
             Cancel
           </button>
