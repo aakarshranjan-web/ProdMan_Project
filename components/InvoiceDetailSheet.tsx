@@ -70,12 +70,20 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
     ],
   ];
   if (interest > 0)
-    rows.push([
-      "Interest accrued (illustrative, 12% p.a.)",
-      <span key="i" className="tnum font-bold text-over">
-        {formatINR(interest)}
-      </span>,
-    ]);
+    rows.push(
+      [
+        "Interest accrued (Section 16, MSMED Act — compound, 3x RBI Bank Rate)",
+        <span key="i" className="tnum font-bold text-over">
+          {formatINR(interest)}
+        </span>,
+      ],
+      [
+        "Total payable",
+        <span key="t" className="tnum text-base font-extrabold">
+          {formatINR(info.balance + interest)}
+        </span>,
+      ],
+    );
   rows.push(
     ["Virtual account", <span key="va" className="font-mono text-xs font-semibold">{inv.virtualAccount}</span>],
     ["Invoice date", formatDate(inv.invoiceDate)],

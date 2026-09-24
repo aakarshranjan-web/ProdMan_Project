@@ -58,14 +58,18 @@ function reminderCount(inv: Invoice) {
   return n === 0 ? null : n === 1 ? "1 reminder sent" : `${n} reminders sent`;
 }
 
-/** Balance still due on part-paid invoices, and illustrative interest on overdue balances. */
+/** Balance still due on part-paid invoices, and Section 16 interest on overdue balances. */
 function MoneyLine({ inv, info, today, className = "" }: { inv: Invoice; info: StatusInfo; today: string; className?: string }) {
   const interest = interestAccrued(inv, today);
   if (!info.partial && !interest) return null;
   return (
     <div className={`tnum whitespace-nowrap text-xs leading-snug ${className}`}>
       {info.partial && <div className="text-ink-soft">Balance {formatINR(info.balance)}</div>}
-      {interest > 0 && <div className="font-semibold text-over">+{formatINR(interest)} interest</div>}
+      {interest > 0 && (
+        <div className="font-semibold text-over" title="Interest accrued (Section 16, MSMED Act — compound, 3x RBI Bank Rate)">
+          +{formatINR(interest)} interest
+        </div>
+      )}
     </div>
   );
 }

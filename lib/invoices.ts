@@ -159,30 +159,54 @@ export function getStatus(inv: Invoice, today: string): StatusInfo {
   return { status: "due-soon", dueDate, daysOverdue: 0, daysLeft: -diff, ...money };
 }
 
-const ILLUSTRATIVE_RATE = 0.12;
+/**
+ * RBI-notified Bank Rate, in percent. The RBI revises this periodically:
+ * check it against the currently notified rate and update it here.
+ */
+export const RBI_BANK_RATE = 5.5;
+
+/** MSMED Act Section 16: interest at three times the RBI Bank Rate, in percent per annum. */
+export const STATUTORY_RATE = RBI_BANK_RATE * 3;
+
+function daysInMonth(iso: string) {
+  const { y, m } = toParts(iso);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
 
 /**
- * Simple interest on the unpaid balance for each day it has been past the
- * MSMED deadline. Payments made after the deadline lower the base from their
- * date onwards; payments made before it simply reduce the starting balance.
+ * Interest under Section 16 of the MSMED Act: compounded monthly (calendar
+ * month rests) at STATUTORY_RATE on the amount still due, from the day after
+ * the deadline, the same deadline that makes an invoice Overdue.
+ *
+ * Each overdue day accrues 1/(days in that month) of a month's interest on the
+ * unpaid principal plus interest already compounded; at each month end that
+ * month's interest is added to the base. A payment lowers the principal from
+ * its own date onwards. Interest accrued before it stays.
  */
 export function interestAccrued(inv: Invoice, today: string) {
   const { status, dueDate } = getStatus(inv, today);
   if (status !== "overdue") return 0;
-  // Placeholder rate (12% p.a.) for prototype purposes — revisit against actual MSMED penal interest formula (3x RBI bank rate) before this is treated as a real figure.
-  const rate = ILLUSTRATIVE_RATE;
-  let balance = inv.amount;
-  let from = dueDate;
-  let interest = 0;
-  for (const p of inv.payments ?? []) {
-    if (p.date > dueDate) {
-      interest += balance * rate * (Math.max(0, daysBetween(from, p.date)) / 365);
-      from = p.date;
+
+  const monthlyRate = STATUTORY_RATE / 12 / 100;
+  const payments = [...(inv.payments ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+  let principal = inv.amount;
+  let next = 0;
+  // Payments on or before the deadline just reduce the starting balance.
+  while (next < payments.length && payments[next].date <= dueDate) principal -= payments[next++].amount;
+
+  let compounded = 0; // interest already added to the base at past month ends
+  let thisMonth = 0; // interest accrued so far in the current month
+  for (let day = toDayNumber(dueDate) + 1; day <= toDayNumber(today); day++) {
+    const iso = fromDayNumber(day);
+    while (next < payments.length && payments[next].date <= iso) principal -= payments[next++].amount;
+    principal = Math.max(0, principal);
+    thisMonth += (principal + compounded) * monthlyRate * (1 / daysInMonth(iso));
+    if (toParts(iso).d === daysInMonth(iso)) {
+      compounded += thisMonth;
+      thisMonth = 0;
     }
-    balance = Math.max(0, balance - p.amount);
   }
-  interest += balance * rate * (Math.max(0, daysBetween(from, today)) / 365);
-  return Math.round(interest);
+  return Math.round(compounded + thisMonth);
 }
 
 /** Days overdue at which the owner can hand the invoice to a CA partner. */

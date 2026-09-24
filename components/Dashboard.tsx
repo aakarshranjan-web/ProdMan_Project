@@ -1,7 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { formatDate, formatINR, type Invoice } from "@/lib/invoices";
+import { formatDate, formatINR, STATUTORY_RATE, type Invoice } from "@/lib/invoices";
 import { agingBuckets, collectionRate, expectedInflows, rateTrend, SCHEDULED_OUTFLOWS, summary, totalInterest } from "@/lib/metrics";
 
 const INK = "#0f1d2e";
@@ -68,9 +68,9 @@ export default function Dashboard({ invoices, today }: { invoices: Invoice[]; to
         />
         <Card label="Invoices escalated to CA" value={String(escalated)} note="Handed to a CA partner" />
         <Card
-          label="Total interest accrued (illustrative)"
+          label="Total interest accrued (Section 16)"
           value={formatINR(interest)}
-          note="12% p.a. on overdue balances. Not the statutory MSMED rate"
+          note={`Compounded monthly at 3× RBI Bank Rate (${STATUTORY_RATE}% p.a.) on overdue balances`}
           tone={interest ? "over" : undefined}
         />
       </div>
