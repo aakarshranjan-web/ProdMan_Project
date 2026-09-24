@@ -1,4 +1,4 @@
-import { addDays, daysBetween, getStatus, type Invoice } from "./invoices";
+import { addDays, daysBetween, getStatus, interestAccrued, paidOn, type Invoice } from "./invoices";
 
 export interface CollectionRate {
   /** 0–100, or null when no reminded invoice has a known outcome yet */
@@ -18,10 +18,11 @@ export function collectionRate(invoices: Invoice[], today: string): CollectionRa
   for (const inv of invoices) {
     const first = inv.reminders?.map((r) => r.date).sort()[0];
     if (!first) continue;
-    if (inv.paidOn && daysBetween(first, inv.paidOn) <= 7) {
+    const paid = paidOn(inv);
+    if (paid && daysBetween(first, paid) <= 7) {
       paidWithin7++;
       decided++;
-    } else if (inv.paidOn || daysBetween(first, today) > 7) {
+    } else if (paid || daysBetween(first, today) > 7) {
       decided++;
     }
   }
@@ -41,10 +42,10 @@ export function agingBuckets(invoices: Invoice[], today: string): AgingBucket[] 
     { label: "45+ days", amount: 0, count: 0 },
   ];
   for (const inv of invoices) {
-    const { status, daysOverdue } = getStatus(inv, today);
+    const { status, daysOverdue, balance } = getStatus(inv, today);
     if (status !== "overdue") continue;
     const b = daysOverdue <= 15 ? buckets[0] : daysOverdue <= 45 ? buckets[1] : buckets[2];
-    b.amount += inv.amount;
+    b.amount += balance;
     b.count++;
   }
   return buckets;
@@ -55,11 +56,11 @@ export function summary(invoices: Invoice[], today: string) {
   let overdue = 0;
   let overdueCount = 0;
   for (const inv of invoices) {
-    const { status } = getStatus(inv, today);
+    const { status, balance } = getStatus(inv, today);
     if (status === "paid") continue;
-    outstanding += inv.amount;
+    outstanding += balance;
     if (status === "overdue") {
-      overdue += inv.amount;
+      overdue += balance;
       overdueCount++;
     }
   }
@@ -98,8 +99,13 @@ export function expectedInflows(invoices: Invoice[], today: string) {
   let dueSoon = 0;
   for (const inv of invoices) {
     const info = getStatus(inv, today);
-    if (info.status === "overdue") overdue += inv.amount;
-    else if (info.status === "due-soon" && info.dueDate <= end) dueSoon += inv.amount;
+    if (info.status === "overdue") overdue += info.balance;
+    else if (info.status === "due-soon" && info.dueDate <= end) dueSoon += info.balance;
   }
   return { overdue, dueSoon, total: overdue + dueSoon, end };
+}
+
+/** Illustrative interest across every invoice with an overdue balance. */
+export function totalInterest(invoices: Invoice[], today: string) {
+  return invoices.reduce((sum, inv) => sum + interestAccrued(inv, today), 0);
 }

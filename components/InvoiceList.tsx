@@ -5,7 +5,17 @@ import StatusBadge from "./StatusBadge";
 import { EscalatedBadge } from "./EscalateSheet";
 import { paidLabel } from "./InvoiceDetailSheet";
 import RowMenu from "./RowMenu";
-import { canEscalate, formatDate, formatINR, getStatus, type Invoice, type StatusInfo } from "@/lib/invoices";
+import {
+  canEscalate,
+  finalPayment,
+  formatDate,
+  formatINR,
+  getStatus,
+  interestAccrued,
+  paidOn,
+  type Invoice,
+  type StatusInfo,
+} from "@/lib/invoices";
 
 type SortKey = "status" | "due" | "amount";
 
@@ -23,7 +33,7 @@ function compare(a: Row, b: Row, key: SortKey) {
       if (r !== 0) return r;
       if (a.info.status === "overdue") return b.info.daysOverdue - a.info.daysOverdue; // most overdue first
       if (a.info.status === "due-soon") return a.info.daysLeft - b.info.daysLeft; // nearest deadline first
-      return (b.inv.paidOn ?? "").localeCompare(a.inv.paidOn ?? ""); // latest payment first
+      return (paidOn(b.inv) ?? "").localeCompare(paidOn(a.inv) ?? ""); // latest payment first
     }
     case "due":
       return a.info.dueDate.localeCompare(b.info.dueDate);
@@ -48,6 +58,18 @@ function reminderCount(inv: Invoice) {
   return n === 0 ? null : n === 1 ? "1 reminder sent" : `${n} reminders sent`;
 }
 
+/** Balance still due on part-paid invoices, and illustrative interest on overdue balances. */
+function MoneyLine({ inv, info, today, className = "" }: { inv: Invoice; info: StatusInfo; today: string; className?: string }) {
+  const interest = interestAccrued(inv, today);
+  if (!info.partial && !interest) return null;
+  return (
+    <div className={`tnum whitespace-nowrap text-xs leading-snug ${className}`}>
+      {info.partial && <div className="text-ink-soft">Balance {formatINR(info.balance)}</div>}
+      {interest > 0 && <div className="font-semibold text-over">+{formatINR(interest)} interest</div>}
+    </div>
+  );
+}
+
 function Overdue({ info }: { info: StatusInfo }) {
   if (info.status !== "overdue") return <span className="text-ink-soft/60">—</span>;
   return (
@@ -62,14 +84,14 @@ interface Props {
   today: string;
   highlightIds: string[];
   onOpen: (id: string) => void;
-  onMarkPaid: (id?: string) => void;
+  onRecordPayment: (id: string) => void;
   onSendReminder: (id: string) => void;
   onEscalate: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-export default function InvoiceList({ invoices, today, highlightIds, onOpen, onMarkPaid, onSendReminder, onEscalate, onEdit, onDelete }: Props) {
+export default function InvoiceList({ invoices, today, highlightIds, onOpen, onRecordPayment, onSendReminder, onEscalate, onEdit, onDelete }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("status");
   const [reversed, setReversed] = useState(false);
 
@@ -117,12 +139,9 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
           </div>
         </div>
       </div>
-      <div className="-mt-2 mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-soft">
-        <span>Sorted by {sortLabels[sortKey][reversed ? 1 : 0].toLowerCase()} · tap again to reverse</span>
-        <button onClick={() => onMarkPaid()} className="font-semibold text-brand hover:underline">
-          Record a payment received
-        </button>
-      </div>
+      <p className="-mt-2 mb-4 text-xs text-ink-soft">
+        Sorted by {sortLabels[sortKey][reversed ? 1 : 0].toLowerCase()} · tap again to reverse
+      </p>
 
       {rows.length === 0 && (
         <div className="rounded-3xl border border-dashed border-line bg-card px-6 py-12 text-center text-ink-soft">
@@ -152,21 +171,22 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                 </div>
               </div>
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-sm">
-              <div className="flex items-center gap-2">
-                <StatusBadge status={info.status} />
+            <MoneyLine inv={inv} info={info} today={today} className="mt-2 text-right" />
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 whitespace-nowrap border-t border-line pt-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={info.status} partial={info.partial} />
                 {info.status === "overdue" && (
                   <span className="tnum font-bold text-over">
                     {info.daysOverdue} {info.daysOverdue === 1 ? "day" : "days"} late
                   </span>
                 )}
                 {info.status === "due-soon" && <span className="text-ink-soft">{dueHint(info)}</span>}
-                {info.status === "paid" && inv.paidOn && <span className="text-ink-soft">on {shortDate(inv.paidOn)}</span>}
+                {info.status === "paid" && <span className="text-ink-soft">on {shortDate(paidOn(inv)!)}</span>}
               </div>
               <span className="text-ink-soft">Due {shortDate(info.dueDate)}</span>
             </div>
             {(info.status === "paid" || reminderCount(inv)) && (
-              <p className={`mt-2 text-xs ${info.status === "paid" && inv.paidVia === "bank" ? "font-semibold text-brand" : "text-ink-soft"}`}>
+              <p className={`mt-2 text-xs ${info.status === "paid" && finalPayment(inv)?.via === "bank" ? "font-semibold text-brand" : "text-ink-soft"}`}>
                 {info.status === "paid" ? paidLabel(inv) : reminderCount(inv)}
               </p>
             )}
@@ -181,10 +201,10 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                   </button>
                 )}
                 <button
-                  onClick={() => onMarkPaid(inv.id)}
+                  onClick={() => onRecordPayment(inv.id)}
                   className="flex-1 rounded-xl border border-line py-2.5 text-sm font-bold text-brand hover:bg-paper"
                 >
-                  Mark paid
+                  Record Payment
                 </button>
               </div>
             )}
@@ -232,7 +252,10 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                 >
                   <td className="min-w-[10rem] px-3 py-4 font-bold">{inv.buyerName}</td>
                   <td className="whitespace-nowrap px-3 py-4 font-mono text-xs text-ink-soft">{inv.invoiceNumber}</td>
-                  <td className="tnum px-3 py-4 text-right text-base font-extrabold">{formatINR(inv.amount)}</td>
+                  <td className="px-3 py-4 text-right">
+                    <div className="tnum text-base font-extrabold">{formatINR(inv.amount)}</div>
+                    <MoneyLine inv={inv} info={info} today={today} />
+                  </td>
                   <td className="px-3 py-4">
                     <div className="tnum whitespace-nowrap">{formatDate(info.dueDate)}</div>
                     <div className="text-xs text-ink-soft">
@@ -240,11 +263,11 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                     </div>
                   </td>
                   <td className="min-w-[11rem] px-3 py-4">
-                    <StatusBadge status={info.status} />
-                    {info.status === "paid" && inv.paidOn && (
-                      <div className={`mt-1 text-xs leading-snug ${inv.paidVia === "bank" ? "font-semibold text-brand" : "text-ink-soft"}`}>
+                    <StatusBadge status={info.status} partial={info.partial} />
+                    {info.status === "paid" && (
+                      <div className={`mt-1 text-xs leading-snug ${finalPayment(inv)?.via === "bank" ? "font-semibold text-brand" : "text-ink-soft"}`}>
                         {paidLabel(inv)}
-                        <span className="block font-normal text-ink-soft">on {shortDate(inv.paidOn)}</span>
+                        <span className="block font-normal text-ink-soft">on {shortDate(paidOn(inv)!)}</span>
                       </div>
                     )}
                   </td>
@@ -258,7 +281,7 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                     <div className="flex items-start justify-end gap-1">
                       <div>
                         {info.status !== "paid" && (
-                          <div className="flex justify-end gap-1.5">
+                          <div className="flex flex-col items-end gap-1">
                             {info.status === "overdue" && (
                               <button
                                 onClick={() => onSendReminder(inv.id)}
@@ -268,10 +291,10 @@ export default function InvoiceList({ invoices, today, highlightIds, onOpen, onM
                               </button>
                             )}
                             <button
-                              onClick={() => onMarkPaid(inv.id)}
-                              className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold text-brand hover:bg-brand/10"
+                              onClick={() => onRecordPayment(inv.id)}
+                              className="whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-bold text-brand hover:bg-brand/10"
                             >
-                              Mark paid
+                              Record Payment
                             </button>
                           </div>
                         )}

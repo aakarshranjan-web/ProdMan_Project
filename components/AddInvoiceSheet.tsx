@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Sheet, { Field, inputClass } from "./Sheet";
 import WhatsAppThread from "./WhatsAppThread";
-import { addDays, formatDate, type Invoice, type PaymentTerms } from "@/lib/invoices";
+import { addDays, formatDate, type Invoice, type InvoiceFields, type PaymentTerms } from "@/lib/invoices";
 import { mockExtractFromPhoto, mockExtractFromWhatsApp, nextInvoiceNumber, type ExtractedInvoice } from "@/lib/extract";
 
 interface Props {
@@ -11,7 +11,7 @@ interface Props {
   today: string;
   invoices: Invoice[];
   onClose: () => void;
-  onAdd: (inv: Omit<Invoice, "id">) => void;
+  onAdd: (inv: InvoiceFields) => void;
   /** When set, the form edits this invoice instead of creating a new one. */
   editing?: Invoice;
 }

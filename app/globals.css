@@ -18,6 +18,8 @@
   --color-due-bg: #fdf1cf;
   --color-over: #b42318;
   --color-over-bg: #fde6e3;
+  --color-part: #a4480b;
+  --color-part-bg: #fde9d6;
 }
 
 html,
@@ -49,4 +51,11 @@ body {
 }
 .sheet-in {
   animation: sheet-up 0.22s ease-out;
+}
+
+@keyframes settle-pulse {
+  50% { opacity: 0.45; }
+}
+.settling {
+  animation: settle-pulse 1.2s ease-in-out infinite;
 }

@@ -3,7 +3,16 @@
 import Sheet from "./Sheet";
 import StatusBadge from "./StatusBadge";
 import { EscalatedBadge } from "./EscalateSheet";
-import { canEscalate, formatDate, formatINR, getStatus, type Invoice } from "@/lib/invoices";
+import {
+  canEscalate,
+  finalPayment,
+  formatDate,
+  formatINR,
+  getStatus,
+  interestAccrued,
+  type Invoice,
+  type Payment,
+} from "@/lib/invoices";
 import { channelLabel, paymentLink } from "@/lib/business";
 
 interface Props {
@@ -11,37 +20,80 @@ interface Props {
   today: string;
   onClose: () => void;
   onSendReminder: () => void;
-  onMarkPaid: () => void;
+  onRecordPayment: () => void;
   onEscalate: () => void;
 }
 
 export function paidLabel(inv: Invoice) {
-  return inv.paidVia === "bank" ? "Auto-matched from bank statement" : "Marked paid manually";
+  return finalPayment(inv)?.via === "bank" ? "Auto-matched from bank statement" : "Marked paid manually";
 }
 
-export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSendReminder, onMarkPaid, onEscalate }: Props) {
+/** Two-step trail: landed in the virtual account, then swept to the main account. */
+export function SettlementTrail({ payment, virtualAccount }: { payment: Payment; virtualAccount: string }) {
+  return (
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-soft">
+      <span>
+        Received in <span className="font-mono">{virtualAccount}</span> on {formatDate(payment.date)}
+      </span>
+      <span aria-hidden>→</span>
+      {payment.settledOn ? (
+        <span className="font-semibold text-paid">
+          Settled to {payment.settledTo ?? "main account"} on {formatDate(payment.settledOn)}
+        </span>
+      ) : (
+        <span className="settling font-semibold text-brand">Settling to main account…</span>
+      )}
+    </p>
+  );
+}
+
+export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSendReminder, onRecordPayment, onEscalate }: Props) {
   const info = getStatus(inv, today);
   const reminders = [...(inv.reminders ?? [])].reverse();
+  const interest = interestAccrued(inv, today);
+  const final = finalPayment(inv);
+
+  let running = inv.amount;
+  const history = (inv.payments ?? []).map((p) => {
+    running = Math.max(0, running - p.amount);
+    return { p, after: running };
+  });
 
   const rows: [string, React.ReactNode][] = [
-    ["Amount", <span key="a" className="tnum font-extrabold">{formatINR(inv.amount)}</span>],
+    ["Total amount", <span key="a" className="tnum font-extrabold">{formatINR(inv.amount)}</span>],
+    ["Amount paid", <span key="p" className="tnum">{formatINR(info.amountPaid)}</span>],
+    [
+      "Balance due",
+      <span key="b" className={`tnum font-extrabold ${info.balance && info.status === "overdue" ? "text-over" : ""}`}>
+        {formatINR(info.balance)}
+      </span>,
+    ],
+  ];
+  if (interest > 0)
+    rows.push([
+      "Interest accrued (illustrative, 12% p.a.)",
+      <span key="i" className="tnum font-bold text-over">
+        {formatINR(interest)}
+      </span>,
+    ]);
+  rows.push(
+    ["Virtual account", <span key="va" className="font-mono text-xs font-semibold">{inv.virtualAccount}</span>],
     ["Invoice date", formatDate(inv.invoiceDate)],
     ["Payment terms", `${inv.termsDays} days`],
     ["Due date", formatDate(info.dueDate)],
-  ];
+  );
   if (info.status === "overdue") rows.push(["Days overdue", <span key="o" className="font-bold text-over">{info.daysOverdue}</span>]);
-  if (inv.paidOn) rows.push(["Paid on", formatDate(inv.paidOn)]);
-  if (inv.paymentRef) rows.push(["Payment ref", <span key="r" className="font-mono text-xs">{inv.paymentRef}</span>]);
+  if (final) rows.push(["Paid in full on", formatDate(final.date)]);
   if (inv.escalation)
     rows.push(["CA escalation", `${inv.escalation.caName}, ${formatDate(inv.escalation.date)} ${inv.escalation.time}`]);
-  if (!inv.paidOn) rows.push(["Payment link", <span key="l" className="font-mono text-xs">{paymentLink(inv)}</span>]);
+  if (!final) rows.push(["Payment link", <span key="l" className="font-mono text-xs">{paymentLink(inv)}</span>]);
 
   return (
     <Sheet open onClose={onClose} title={inv.buyerName} subtitle={inv.invoiceNumber}>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <StatusBadge status={info.status} />
-        {inv.paidOn && (
-          <span className={`text-sm font-semibold ${inv.paidVia === "bank" ? "text-brand" : "text-ink-soft"}`}>{paidLabel(inv)}</span>
+        <StatusBadge status={info.status} partial={info.partial} />
+        {final && (
+          <span className={`text-sm font-semibold ${final.via === "bank" ? "text-brand" : "text-ink-soft"}`}>{paidLabel(inv)}</span>
         )}
       </div>
 
@@ -53,6 +105,35 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
           </div>
         ))}
       </dl>
+
+      <div className="mt-6">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-bold">Payment history</h3>
+          <span className="rounded-full bg-paper px-2.5 py-1 text-xs font-bold text-ink-soft">
+            {history.length === 1 ? "1 payment" : `${history.length} payments`}
+          </span>
+        </div>
+        {history.length === 0 ? (
+          <p className="rounded-2xl bg-paper px-4 py-3 text-sm text-ink-soft">No payments received yet.</p>
+        ) : (
+          <ol className="space-y-2">
+            {[...history].reverse().map(({ p, after }) => (
+              <li key={p.id} className="rounded-2xl border border-line px-4 py-3 text-sm">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                  <p className="font-semibold">
+                    <span className="tnum">{formatINR(p.amount)}</span> received {formatDate(p.date)}, {p.time}
+                    {p.via === "bank" && <span className="ml-1.5 text-xs font-semibold text-brand">· Auto-matched</span>}
+                  </p>
+                  <p className="tnum text-xs text-ink-soft">Balance after: {formatINR(after)}</p>
+                </div>
+                <div className="mt-1">
+                  <SettlementTrail payment={p} virtualAccount={inv.virtualAccount} />
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
 
       <div className="mt-6">
         <div className="mb-2 flex items-center justify-between">
@@ -94,10 +175,10 @@ export default function InvoiceDetailSheet({ invoice: inv, today, onClose, onSen
             </button>
           )}
           <button
-            onClick={onMarkPaid}
+            onClick={onRecordPayment}
             className={`rounded-xl border border-line py-3 text-sm font-bold hover:bg-paper ${info.status === "overdue" ? "" : "sm:col-span-2"}`}
           >
-            Mark as paid
+            Record Payment
           </button>
           {canEscalate(info) && !inv.escalation && (
             <button

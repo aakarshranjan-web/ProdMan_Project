@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AddInvoiceSheet from "@/components/AddInvoiceSheet";
-import BankCreditSheet from "@/components/BankCreditSheet";
 import ConnectBankSheet from "@/components/ConnectBankSheet";
 import Dashboard from "@/components/Dashboard";
 import DeleteInvoiceSheet from "@/components/DeleteInvoiceSheet";
@@ -10,6 +9,7 @@ import EscalateSheet from "@/components/EscalateSheet";
 import InvoiceDetailSheet from "@/components/InvoiceDetailSheet";
 import InvoiceList from "@/components/InvoiceList";
 import LoginScreen from "@/components/LoginScreen";
+import RecordPaymentSheet from "@/components/RecordPaymentSheet";
 import ReminderSheet from "@/components/ReminderSheet";
 import { channelLabel, nowTime } from "@/lib/business";
 import { clearSession, loadSession, saveSession, type Session } from "@/lib/session";
@@ -19,9 +19,12 @@ import {
   getStatus,
   seedInvoices,
   todayISO,
-  type BankCredit,
   type Channel,
   type Invoice,
+  type InvoiceFields,
+  type Payment,
+  balanceDue,
+  virtualAccountFor,
 } from "@/lib/invoices";
 
 type Tab = "invoices" | "dashboard";
@@ -47,7 +50,7 @@ export default function Home() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
-  const [credit, setCredit] = useState<{ key: number; prefillId?: string } | null>(null);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [reminderId, setReminderId] = useState<string | null>(null);
   const [escalateId, setEscalateId] = useState<string | null>(null);
@@ -86,34 +89,79 @@ export default function Home() {
     setTimeout(() => setHighlightIds((h) => (h === ids ? [] : h)), 2500);
   };
 
-  const addInvoice = (inv: Omit<Invoice, "id">) => {
+  const addInvoice = (inv: InvoiceFields) => {
     const id = `u${Date.now()}`;
-    setInvoices((list) => [...list, { ...inv, id }]);
+    setInvoices((list) => [...list, { ...inv, id, virtualAccount: virtualAccountFor(inv.invoiceNumber) }]);
     setTab("invoices");
     setToast(`Invoice ${inv.invoiceNumber} added`);
     flash(id);
   };
 
-  const confirmCredit = (invoiceId: string, c: BankCredit) => {
+  // Money lands in the invoice's virtual account first; a moment later it is swept to the main account.
+  const SETTLE_MS = 2000;
+
+  const settleLater = (payments: { invoiceId: string; paymentId: string }[], settledTo: string, announce?: string) => {
+    setTimeout(() => {
+      const date = todayISO();
+      const time = nowTime();
+      const byInvoice = new Map<string, Set<string>>();
+      payments.forEach(({ invoiceId, paymentId }) => byInvoice.set(invoiceId, (byInvoice.get(invoiceId) ?? new Set()).add(paymentId)));
+      setInvoices((list) =>
+        list.map((i) =>
+          byInvoice.has(i.id)
+            ? {
+                ...i,
+                payments: i.payments?.map((p) =>
+                  byInvoice.get(i.id)!.has(p.id) ? { ...p, settledOn: date, settledTime: time, settledTo } : p,
+                ),
+              }
+            : i,
+        ),
+      );
+      if (announce) setToast(announce);
+    }, SETTLE_MS);
+  };
+
+  const mainAccount = (bankName: string | null) => (bankName ? `${bankName} ••••4821` : "main account");
+
+  const recordPayment = (invoiceId: string, amount: number) => {
     const inv = invoices.find((i) => i.id === invoiceId);
-    setInvoices((list) =>
-      list.map((i) =>
-        i.id === invoiceId ? { ...i, paidOn: today!, paymentRef: c.reference || undefined, paidVia: "manual" } : i,
-      ),
-    );
-    setCredit(null);
-    if (inv) setToast(`${formatINR(c.amount)} from ${inv.buyerName} matched · ${inv.invoiceNumber} marked paid`);
+    if (!inv) return;
+    const payment: Payment = { id: `p${Date.now()}`, amount, date: today!, time: nowTime(), via: "manual" };
+    setInvoices((list) => list.map((i) => (i.id === invoiceId ? { ...i, payments: [...(i.payments ?? []), payment] } : i)));
+    setPaymentId(null);
+    setToast(`${formatINR(amount)} received in ${inv.virtualAccount} · settling to your main account`);
     flash(invoiceId);
+    const to = mainAccount(bank);
+    settleLater([{ invoiceId, paymentId: payment.id }], to, `${formatINR(amount)} settled to ${to}`);
   };
 
   // Simulated Account Aggregator fetch: 1–2 open sample invoices turn out to be paid already.
   const connectBank = (bankName: string) => {
-    const open = invoices.filter((i) => !i.paidOn && i.id.startsWith("s"));
+    const open = invoices.filter((i) => balanceDue(i) > 0 && i.id.startsWith("s"));
     const shuffled = [...open].sort(() => Math.random() - 0.5);
     const matched = shuffled.slice(0, Math.min(open.length, 1 + Math.floor(Math.random() * 2)));
-    const ids = new Set(matched.map((i) => i.id));
+    const time = nowTime();
+    const received = matched.map((inv, n) => ({
+      invoiceId: inv.id,
+      payment: {
+        id: `p${Date.now()}-${n}`,
+        amount: balanceDue(inv),
+        date: today!,
+        time,
+        via: "bank",
+        ref: randomRef("NEFT/"),
+      } satisfies Payment,
+    }));
     setInvoices((list) =>
-      list.map((i) => (ids.has(i.id) ? { ...i, paidOn: today!, paidVia: "bank", paymentRef: randomRef("NEFT/") } : i)),
+      list.map((i) => {
+        const r = received.find((x) => x.invoiceId === i.id);
+        return r ? { ...i, payments: [...(i.payments ?? []), r.payment] } : i;
+      }),
+    );
+    settleLater(
+      received.map((r) => ({ invoiceId: r.invoiceId, paymentId: r.payment.id })),
+      mainAccount(bankName),
     );
     setBank(bankName);
     setConnectOpen(false);
@@ -152,7 +200,7 @@ export default function Home() {
   const closeEscalate = useCallback(() => setEscalateId(null), []);
 
   // Only the invoice's own fields change; reminders, escalation and payment stay as they were.
-  const updateInvoice = (id: string, fields: Omit<Invoice, "id">) => {
+  const updateInvoice = (id: string, fields: InvoiceFields) => {
     setInvoices((list) =>
       list.map((i) =>
         i.id === id
@@ -196,7 +244,7 @@ export default function Home() {
     setBank(null);
     setAddOpen(false);
     setConnectOpen(false);
-    setCredit(null);
+    setPaymentId(null);
     setDetailId(null);
     setReminderId(null);
     setEscalateId(null);
@@ -205,15 +253,14 @@ export default function Home() {
     setSession(null);
   };
 
-  const openCredit = useCallback((prefillId?: string) => {
+  const openPayment = useCallback((id: string) => {
     setDetailId(null);
-    setCredit({ key: Date.now(), prefillId });
+    setPaymentId(id);
   }, []);
   const openReminder = useCallback((id: string) => {
     setDetailId(null);
     setReminderId(id);
   }, []);
-  const closeCredit = useCallback(() => setCredit(null), []);
   const closeAdd = useCallback(() => setAddOpen(false), []);
   const closeConnect = useCallback(() => setConnectOpen(false), []);
   const closeDetail = useCallback(() => setDetailId(null), []);
@@ -223,6 +270,7 @@ export default function Home() {
   const reminderInv = invoices.find((i) => i.id === reminderId);
   const escalateInv = invoices.find((i) => i.id === escalateId);
   const editInv = invoices.find((i) => i.id === editId);
+  const paymentInv = invoices.find((i) => i.id === paymentId);
   const deleteInv = invoices.find((i) => i.id === deleteId);
 
   if (session === undefined) return <div className="min-h-dvh bg-ink" />;
@@ -316,7 +364,7 @@ export default function Home() {
               today={today}
               highlightIds={highlightIds}
               onOpen={setDetailId}
-              onMarkPaid={openCredit}
+              onRecordPayment={openPayment}
               onSendReminder={openReminder}
               onEscalate={openEscalate}
               onEdit={setEditId}
@@ -332,14 +380,13 @@ export default function Home() {
 
       {connectOpen && <ConnectBankSheet open onClose={closeConnect} onConnected={connectBank} />}
 
-      {credit && (
-        <BankCreditSheet
-          key={credit.key}
-          open
-          invoices={invoices}
-          prefillId={credit.prefillId}
-          onClose={closeCredit}
-          onConfirm={confirmCredit}
+      {paymentInv && today && (
+        <RecordPaymentSheet
+          key={paymentInv.id}
+          invoice={paymentInv}
+          today={today}
+          onClose={() => setPaymentId(null)}
+          onRecord={(amount) => recordPayment(paymentInv.id, amount)}
         />
       )}
 
@@ -349,7 +396,7 @@ export default function Home() {
           today={today}
           onClose={closeDetail}
           onSendReminder={() => openReminder(detail.id)}
-          onMarkPaid={() => openCredit(detail.id)}
+          onRecordPayment={() => openPayment(detail.id)}
           onEscalate={() => openEscalate(detail.id)}
         />
       )}
