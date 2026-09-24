@@ -288,9 +288,12 @@ export default function Home() {
       <header className="bg-ink text-white">
         <div className="mx-auto max-w-6xl px-4 pb-20 pt-5 sm:px-6 sm:pt-7">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-lg font-extrabold">₹</div>
-              <span className="hidden text-sm font-semibold tracking-wide text-white/70 sm:inline">{APP_NAME}</span>
+            {/* The wordmark already spells the name, so no separate text label. Phones show just the mark. */}
+            <div className="flex shrink-0 items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/finsaathi-mark.png" alt={APP_NAME} width={31} height={32} className="h-8 w-auto sm:hidden" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/finsaathi-logo-on-dark.png" alt={APP_NAME} width={151} height={32} className="hidden h-8 w-auto sm:block" />
             </div>
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               {bank ? (

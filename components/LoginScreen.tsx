@@ -31,10 +31,8 @@ export default function LoginScreen({ onLogin }: Props) {
     <div className="min-h-dvh bg-paper">
       <div className="bg-ink px-4 pb-28 pt-8 text-white sm:pt-12">
         <div className="mx-auto max-w-md">
-          <div className="flex items-center gap-2.5">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-lg font-extrabold">₹</div>
-            <span className="text-sm font-semibold tracking-wide text-white/70">{APP_NAME}</span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/finsaathi-logo-on-dark.png" alt={APP_NAME} width={170} height={36} className="h-9 w-auto" />
           <h1 className="mt-8 text-3xl font-extrabold tracking-tight">Get paid on time</h1>
           <p className="mt-2 text-[15px] leading-relaxed text-white/65">
             Track every invoice against its MSMED Act deadline, and follow up before it slips.
