@@ -1,6 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import Transactions from "./Transactions";
 import { formatDate, formatINR, STATUTORY_RATE, type Invoice } from "@/lib/invoices";
 import { agingBuckets, collectionRate, expectedInflows, rateTrend, SCHEDULED_OUTFLOWS, summary, totalInterest } from "@/lib/metrics";
 
@@ -233,6 +234,8 @@ export default function Dashboard({ invoices, today }: { invoices: Invoice[]; to
           Assumes every unpaid invoice due by month end, including overdue ones, gets paid this month. Outflows are a fixed sample figure.
         </p>
       </Panel>
+
+      <Transactions invoices={invoices} />
     </div>
   );
 }

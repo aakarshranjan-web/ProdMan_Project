@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Sheet, { Field, inputClass } from "./Sheet";
 import WhatsAppThread from "./WhatsAppThread";
+import { RequestedBy } from "./DeleteInvoiceSheet";
 import { addDays, formatDate, type Invoice, type InvoiceFields, type PaymentTerms } from "@/lib/invoices";
 import { mockExtractFromPhoto, mockExtractFromWhatsApp, nextInvoiceNumber, type ExtractedInvoice } from "@/lib/extract";
 
@@ -14,6 +15,8 @@ interface Props {
   onAdd: (inv: InvoiceFields) => void;
   /** When set, the form edits this invoice instead of creating a new one. */
   editing?: Invoice;
+  /** Name carried over from the admin approval step, shown as context while editing. */
+  requestedBy?: string;
 }
 
 
@@ -24,7 +27,7 @@ type View = "form" | "whatsapp" | "reading";
 
 const READ_MS = 1600;
 
-export default function AddInvoiceSheet({ open, today, invoices, onClose, onAdd, editing }: Props) {
+export default function AddInvoiceSheet({ open, today, invoices, onClose, onAdd, editing, requestedBy }: Props) {
   const [buyerName, setBuyerName] = useState(editing?.buyerName ?? "");
   const [invoiceNumber, setInvoiceNumber] = useState(editing?.invoiceNumber ?? "");
   const [amount, setAmount] = useState(editing ? editing.amount.toLocaleString("en-IN") : "");
@@ -158,6 +161,8 @@ export default function AddInvoiceSheet({ open, today, invoices, onClose, onAdd,
       title={editing ? "Edit invoice" : "Add invoice"}
       subtitle={editing ? "Fix any details that were entered wrong." : "We'll track it against the MSMED Act payment deadline."}
     >
+      {editing && requestedBy && <RequestedBy name={requestedBy} action="Edit" />}
+
       {editing && (reminderCount > 0 || editing.escalation) && (
         <div className="mb-4 rounded-2xl bg-due-bg/70 px-4 py-3 text-sm leading-relaxed">
           This invoice{" "}

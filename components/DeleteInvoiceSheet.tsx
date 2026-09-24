@@ -7,9 +7,10 @@ interface Props {
   invoice: Invoice;
   onCancel: () => void;
   onConfirm: () => void;
+  requestedBy?: string;
 }
 
-export default function DeleteInvoiceSheet({ invoice, onCancel, onConfirm }: Props) {
+export default function DeleteInvoiceSheet({ invoice, onCancel, onConfirm, requestedBy }: Props) {
   const reminders = invoice.reminders?.length ?? 0;
   const esc = invoice.escalation;
   const hasHistory = reminders > 0 || !!esc;
@@ -21,6 +22,7 @@ export default function DeleteInvoiceSheet({ invoice, onCancel, onConfirm }: Pro
 
   return (
     <Sheet open onClose={onCancel} title="Delete invoice?" subtitle={`${invoice.buyerName} · ${invoice.invoiceNumber} · ${formatINR(invoice.amount)}`}>
+      {requestedBy && <RequestedBy name={requestedBy} action="Delete" />}
       {hasHistory ? (
         <div className="rounded-2xl bg-over-bg/70 px-4 py-3 text-sm leading-relaxed">
           {history.map((line) => (
@@ -40,5 +42,16 @@ export default function DeleteInvoiceSheet({ invoice, onCancel, onConfirm }: Pro
         </button>
       </div>
     </Sheet>
+  );
+}
+
+export function RequestedBy({ name, action }: { name: string; action: "Edit" | "Delete" }) {
+  return (
+    <p className="mb-4 flex items-center gap-2 rounded-xl bg-paper px-3.5 py-2.5 text-sm">
+      <span className="rounded-full bg-paid-bg px-2 py-0.5 text-xs font-bold text-paid">Admin approved</span>
+      <span>
+        {action} requested by <b>{name}</b>
+      </span>
+    </p>
   );
 }

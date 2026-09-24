@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AddInvoiceSheet from "@/components/AddInvoiceSheet";
+import AdminApprovalSheet from "@/components/AdminApprovalSheet";
 import ConnectBankSheet from "@/components/ConnectBankSheet";
 import Dashboard from "@/components/Dashboard";
 import DeleteInvoiceSheet from "@/components/DeleteInvoiceSheet";
@@ -56,6 +57,9 @@ export default function Home() {
   const [escalateId, setEscalateId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  // Edit/Delete first go through the admin approval popup; the approver's "Requested by" name is carried forward.
+  const [approval, setApproval] = useState<{ action: "edit" | "delete"; invoiceId: string } | null>(null);
+  const [requestedBy, setRequestedBy] = useState("");
 
   const [highlightIds, setHighlightIds] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -272,6 +276,7 @@ export default function Home() {
   const editInv = invoices.find((i) => i.id === editId);
   const paymentInv = invoices.find((i) => i.id === paymentId);
   const deleteInv = invoices.find((i) => i.id === deleteId);
+  const approvalInv = invoices.find((i) => i.id === approval?.invoiceId);
 
   if (session === undefined) return <div className="min-h-dvh bg-ink" />;
   if (session === null) return <LoginScreen onLogin={logIn} />;
@@ -367,8 +372,8 @@ export default function Home() {
               onRecordPayment={openPayment}
               onSendReminder={openReminder}
               onEscalate={openEscalate}
-              onEdit={setEditId}
-              onDelete={setDeleteId}
+              onEdit={(id) => setApproval({ action: "edit", invoiceId: id })}
+              onDelete={(id) => setApproval({ action: "delete", invoiceId: id })}
             />
           ) : (
             <Dashboard invoices={invoices} today={today} />
@@ -411,11 +416,27 @@ export default function Home() {
         />
       )}
 
+      {approvalInv && approval && (
+        <AdminApprovalSheet
+          key={`${approval.action}-${approvalInv.id}`}
+          action={approval.action}
+          invoice={approvalInv}
+          onCancel={() => setApproval(null)}
+          onApproved={(name) => {
+            setRequestedBy(name);
+            setApproval(null);
+            if (approval.action === "edit") setEditId(approvalInv.id);
+            else setDeleteId(approvalInv.id);
+          }}
+        />
+      )}
+
       {editInv && today && (
         <AddInvoiceSheet
           key={editInv.id}
           open
           editing={editInv}
+          requestedBy={requestedBy}
           today={today}
           invoices={invoices}
           onClose={() => setEditId(null)}
@@ -424,7 +445,7 @@ export default function Home() {
       )}
 
       {deleteInv && (
-        <DeleteInvoiceSheet invoice={deleteInv} onCancel={() => setDeleteId(null)} onConfirm={() => deleteInvoice(deleteInv.id)} />
+        <DeleteInvoiceSheet invoice={deleteInv} requestedBy={requestedBy} onCancel={() => setDeleteId(null)} onConfirm={() => deleteInvoice(deleteInv.id)} />
       )}
 
       {escalateInv && today && (
