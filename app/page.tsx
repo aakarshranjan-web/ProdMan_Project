@@ -13,7 +13,7 @@ import LoginScreen from "@/components/LoginScreen";
 import RecordPaymentSheet from "@/components/RecordPaymentSheet";
 import { IconCheck } from "@/components/ui";
 import ReminderSheet from "@/components/ReminderSheet";
-import { channelLabel, nowTime } from "@/lib/business";
+import { APP_NAME, channelLabel, nowTime } from "@/lib/business";
 import { clearSession, loadSession, saveSession, type Session } from "@/lib/session";
 import {
   formatDate,
@@ -290,7 +290,7 @@ export default function Home() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-lg font-extrabold">₹</div>
-              <span className="hidden text-sm font-semibold tracking-wide text-white/70 sm:inline">Invoice Tracker</span>
+              <span className="hidden text-sm font-semibold tracking-wide text-white/70 sm:inline">{APP_NAME}</span>
             </div>
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               {bank ? (

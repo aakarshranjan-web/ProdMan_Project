@@ -1,4 +1,4 @@
-# Invoice Tracker (Feature 1)
+# FinSathi
 
 Prototype for a neobank for Indian MSME suppliers. Tracks B2B invoices against MSMED Act
 payment deadlines (15 days without a written agreement, up to 45 days with one) and

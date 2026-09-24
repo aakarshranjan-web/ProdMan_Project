@@ -1,6 +1,6 @@
 import { formatINR, type Invoice } from "./invoices";
 
-export const APP_NAME = "Invoice Tracker";
+export const APP_NAME = "FinSathi";
 
 const PAY_DOMAIN = "pay.invoicetracker.in";
 
